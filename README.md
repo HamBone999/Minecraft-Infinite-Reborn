@@ -7,6 +7,6 @@ Please do not flood the repo with nothingburger reports!
 Also, please note that this repository is for tracking bugs ONLY for Minecraft Infinite!!! The other Legacy+ mods are no longer supported!
 
 Common problems:
-* Mod requires at least 2 GB of allocated memory to run properly. This is caused by some type of a memory leak in the code and is being actively investigated.
+* It is recommended to allocate at least 3GB of memory to the mod to ensure it runs smoothly. Technically it should work with only 1GB, but you may experience slowdown or crashes.
 * If sound doesnt work for you, it is 100% an issue with your setup. get the sounds from the repo and play in offline mode to avoid redownloading them.
 
