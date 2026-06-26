@@ -13,4 +13,5 @@ Common problems:
 How to install:
 * For first time install, get the instance zip file and drag-and-drop it (or import from zip) to your MultiMC/Prism launcher.
 * For updating, get the latest version jar file from the archive, right-click your instance, go to the version tab, REMOVE the old jar and click "Add to jar", then select the downloaded jar file.
+* IMPORTANT! Make sure you are using Java 8. Java version 21 and higher will cause the mod to crash due to some bullshit compatability issues with newer Java versions and LWJGL 2.9
 
