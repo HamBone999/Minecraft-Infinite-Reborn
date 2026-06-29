@@ -17,7 +17,8 @@ How to install:
 * IMPORTANT! Make sure you are using Java 8. Java version 21 and higher will cause the mod to crash due to some bullshit compatability issues with newer Java versions and LWJGL 2.9
 
 Fixing bugs in Infdev+ be like:
-<img width="614" height="640" alt="image" src="https://media1.tenor.com/m/MNoGRuUj38MAAAAd/it-is-pointless-cat.gif" />
+
+<img width="314" height="340" alt="image" src="https://media1.tenor.com/m/MNoGRuUj38MAAAAd/it-is-pointless-cat.gif" />
 
 
 
