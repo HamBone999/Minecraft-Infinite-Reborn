@@ -17,6 +17,7 @@ How to install:
 * IMPORTANT! Make sure you are using Java 8. Java version 21 and higher will cause the mod to crash due to some bullshit compatability issues with newer Java versions and LWJGL 2.9
 
 Fixing bugs in Infdev+ be like:
-<div class="tenor-gif-embed" data-postid="24881041" data-share-method="host" data-aspect-ratio="0.959375" data-width="100%"><a href="https://tenor.com/view/it-is-pointless-cat-slide-futile-futility-gif-24881041">It Is Pointless Cat GIF</a>from <a href="https://tenor.com/search/it+is+pointless-gifs">It Is Pointless GIFs</a></div> <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+<img width="614" height="640" alt="image" src="https://media1.tenor.com/m/MNoGRuUj38MAAAAd/it-is-pointless-cat.gif" />
+
 
 
