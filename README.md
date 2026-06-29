@@ -18,7 +18,7 @@ How to install:
 
 Fixing bugs in Infdev+ be like:
 
-<img width="314" height="340" alt="image" src="https://media1.tenor.com/m/MNoGRuUj38MAAAAd/it-is-pointless-cat.gif" />
+<img width="114" height="140" alt="image" src="https://media1.tenor.com/m/MNoGRuUj38MAAAAd/it-is-pointless-cat.gif" />
 
 
 
