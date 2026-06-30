@@ -1,5 +1,5 @@
 # Minecraft Infinite
-A public repository used to track bugs related to Minecraft Infinite and archive all versions of the mod.
+A public repository used to track bugs related to Minecraft Infinite and archive all versions of the mod. There is also a discussions tab for the community to reach out to the dev and share their creations.
 
 PLEASE USE THE CORRESPONDING TEMPLATE WHEN POSTING BUGS!!! If you do not provide adequate information (e.g. you don't fully fill out the form or don't use it at all), YOUR REPORT WILL BE DELETED! 
 Please do not flood the repo with nothingburger reports!
