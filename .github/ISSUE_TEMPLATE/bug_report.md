@@ -12,7 +12,7 @@ The following are considered invalid reports and will be deleted:
 * Lack of sounds (unless they stopped playing while already in-game)
 * Crashes when launching the game in unsupported devices (tablets, phones, steam deck etc.) or launchers other than MultiMC
 * Crashes without a crash log provided (especially those with no information or steps to reproduce).
-* Reports for any mods besides Infdev+. This repository is for Infdev+ ONLY. If you report an issue with Indev+ or Alpha Recrafted, it will be deleted, as those mods are no longer supported.
+* Reports for any mods besides Infinite. This repository is for Infinite ONLY. If you report an issue with Indev+ or Alpha Recrafted, it will be deleted, as those mods are no longer supported.
 
 **Please fill in the report below and remove this and the above text to confirm you have read it!**
 
