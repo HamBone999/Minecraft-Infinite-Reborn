@@ -16,7 +16,7 @@ How to install:
 * For updating, get the latest version jar file from the archive, right-click your instance, go to the version tab, REMOVE the old jar and click "Add to jar", then select the downloaded jar file.
 * IMPORTANT! Make sure you are using Java 8. Java version 21 and higher will cause the mod to crash due to some bullshit incompatability issues between newer Java versions and LWJGL 2.9
 
-<img width="214" height="240" alt="image" src="https://media1.tenor.com/m/p5AoeCjnZP0AAAAd/bulgaria-bulgariq.gif"/>
+<img width="414" height="440" alt="image" src="https://media1.tenor.com/m/p5AoeCjnZP0AAAAd/bulgaria-bulgariq.gif"/>
 
 
 
