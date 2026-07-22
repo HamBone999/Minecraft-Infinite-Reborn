@@ -16,5 +16,5 @@ How to install:
 * For updating, get the latest version jar file from the archive, right-click your instance, go to the version tab, REMOVE the old jar and click "Add to jar", then select the downloaded jar file.
 * IMPORTANT! Make sure you are using Java 8. Java version 21 and higher will cause the mod to crash due to some bullshit incompatability issues between newer Java versions and LWJGL 2.9
 
-<img width="639" height="634" alt="image" src="https://github.com/user-attachments/assets/20eeac68-7a98-4505-93f2-137059daf0bc" />
+<img width="1694" height="769" alt="image" src="https://github.com/user-attachments/assets/55e932ac-f07a-4316-ba44-370ba41939ef" />
 
