@@ -22,8 +22,6 @@ Greatest gifs in existence:
 
 <img width="214" height="440" alt="image" src="https://media1.tenor.com/m/dnJj4Uu98tUAAAAd/snake-metal-gear-solid.gif"/>
 
-<img width="414" height="440" alt="image" src="https://media1.tenor.com/m/zd0HEYDd_qoAAAAd/turkey-turkiye.gif"/>
-
 <img width="414" height="440" alt="image" src="https://media1.tenor.com/m/kv1ayKW_RscAAAAC/zyzz-zyzz-bolas.gif"/>
 
 <img width="414" height="440" alt="image" src="https://media1.tenor.com/m/VCqchonbM1QAAAAd/turkish-turkiye.gif"/>
