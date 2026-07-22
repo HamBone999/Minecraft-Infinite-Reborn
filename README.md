@@ -25,3 +25,6 @@ Greatest gifs in existence:
 <img width="414" height="440" alt="image" src="https://media1.tenor.com/m/kv1ayKW_RscAAAAC/zyzz-zyzz-bolas.gif"/>
 
 <img width="414" height="440" alt="image" src="https://media1.tenor.com/m/VCqchonbM1QAAAAd/turkish-turkiye.gif"/>
+
+<img width="639" height="634" alt="image" src="https://github.com/user-attachments/assets/20eeac68-7a98-4505-93f2-137059daf0bc" />
+
