@@ -1,10 +1,7 @@
 # Minecraft Infinite
-A public repository used to track bugs related to Minecraft Infinite and archive all versions of the mod. There is also a discussions tab for the community to reach out to the dev and share their creations.
-
-PLEASE USE THE CORRESPONDING TEMPLATE WHEN POSTING BUGS!!! If you do not provide adequate information (e.g. you don't fully fill out the form or don't use it at all), YOUR REPORT WILL BE DELETED! 
-Please do not flood the repo with nothingburger reports!
-
-Also, please note that this repository is for tracking bugs ONLY for Minecraft Infinite!!! The other Legacy+ mods are no longer supported!
+This repository was used to host an archive of "Minecraft Infinite" versions and report bugs with the mod, but has since been archived. 
+I am no longer updating or supporting the mod and I will not accept any bug reports. I don't care, even if there's some game breaking bug or crash. I've had enough. 
+For my own sanity, this project is discontinued. Below you will find some basic info and an install guide. Enjoy. 
 
 Common problems:
 * It is recommended to allocate at least 3GB of memory to the mod to ensure it runs smoothly. Technically it should work with only 1GB, but you may experience slowdown or crashes.
