@@ -1,4 +1,7 @@
 # Minecraft Infinite Reborn
+
+This refer to [Repo](https://github.com/Trivaxy/Minecraft-Infinite-MP) for the latest updates as I am not going to update this further as Trivaxy has a better code base to work on.
+
 This repository is to maintain and update what was formally known as "Minecraft Infinite". I will be accepting bug reports. Below you will find some basic info and an install guide. Enjoy. 
 
 Common problems:
