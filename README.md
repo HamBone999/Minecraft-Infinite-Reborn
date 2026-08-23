@@ -10,7 +10,5 @@ Common problems:
 
 How to install:
 * Download the latest files from [Releases](https://github.com/HamBone999/Minecraft-Infinite-Reborn/releases)
-* For first time install, get the instance zip file (Infdev-1.0.7.zip) and drag-and-drop it (or import from zip) to your MultiMC/Prism launcher.
-* For updating, get the latest version jar file from the archive, right-click your instance, go to the version tab, REMOVE the old jar and click "Add to jar", then select the downloaded jar file.
-* IMPORTANT! Make sure you are using Java 8. Java version 21 and higher will cause the mod to crash due to some bullshit incompatability issues between newer Java versions and LWJGL 2.9
-* For server instructions refer to the README included with those files.
+* For first time install, go to your default MC launcher, Prism, or MultiMC. Create an instance for a1.0.4, run it and make sure you get to title screen.
+* Follow instructions in INSTALL.md
