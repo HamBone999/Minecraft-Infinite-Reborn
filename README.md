@@ -29,7 +29,7 @@ tools/                 the debugging toolkit, see tools/README.md
 docs/                  how this thing is put together
 ```
 
-**Committed:** my source, my art, diffs, build logic, hashes.
+**Committed:** our source, our art, diffs, build logic, hashes.
 **Never committed:** the base jars, decompiled output, built jars.
 
 ## Building
