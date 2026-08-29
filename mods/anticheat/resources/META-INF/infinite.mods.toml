@@ -1,0 +1,14 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "anticheat"
+version = "0.1.0"
+displayName = "Anticheat"
+description = "Movement, reach and spam detection. Log-only until you enable kicking."
+authors = "hambone"
+entrypoint = "anticheat.AntiCheatMod"
+
+[[mixins]]
+config = "anticheat.mixins.json"

@@ -1,0 +1,26 @@
+--- a/net/minecraft/game/entity/Entity.java
++++ b/net/minecraft/game/entity/Entity.java
+@@ -384,7 +384,7 @@
+       }
+ 
+       if (this.posY < -64.0) {
+-         this.kill();
++         this.onFellOutOfWorld();
+       }
+ 
+       if (!this.world.isOnline) {
+@@ -398,6 +398,14 @@
+    public void despawnTick() {
+    }
+ 
++   /**
++    * Falling out of the bottom of the world. Split out so subclasses can do something other
++    * than die -- for a player in the overworld the void is the way into the hell dimension.
++    */
++   protected void onFellOutOfWorld() {
++      this.kill();
++   }
++
+    protected void kill() {
+       this.setDead();
+    }

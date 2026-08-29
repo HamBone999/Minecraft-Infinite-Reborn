@@ -1,0 +1,23 @@
+--- a/net/minecraft/server/network/NetworkListener.java
++++ b/net/minecraft/server/network/NetworkListener.java
+@@ -37,8 +37,18 @@
+                      InetAddress inetAddress3 = socket2.getInetAddress();
+                      if (hashMap1.containsKey(inetAddress3)
+                         && !"127.0.0.1".equals(inetAddress3.getHostAddress())
+-                        && System.currentTimeMillis() - hashMap1.get(inetAddress3) < 5000L) {
+-                        hashMap1.put(inetAddress3, System.currentTimeMillis());
++                        && System.currentTimeMillis() - hashMap1.get(inetAddress3) < 500L) {
++                        // Two changes from stock, both required:
++                        //
++                        // 1. Do NOT refresh the timestamp here. Re-arming on the rejection path
++                        //    pushes the window forward on every retry, so a client reconnecting
++                        //    faster than the interval locks itself out permanently.
++                        //
++                        // 2. 5000ms was far too wide. Joining a server is TWO connections about
++                        //    a second apart -- the server-list ping, then the login. At 5000ms
++                        //    the ping consumed the allowance and the login that followed it was
++                        //    always refused, so nobody could ever join. 500ms still throttles a
++                        //    genuine flood while leaving normal ping-then-connect alone.
+                         socket2.close();
+                      } else {
+                         hashMap1.put(inetAddress3, System.currentTimeMillis());

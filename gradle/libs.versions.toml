@@ -1,0 +1,25 @@
+# Third-party libraries, as real dependencies rather than jars vendored into the repo.
+# docs/DISTRIBUTION.md: about 3,500 of the ~5,000 class files in the jar are vendored
+# libraries. They do not belong in a repo, they belong here.
+[versions]
+mixin         = "0.8.5"
+launchwrapper = "1.12"
+asm           = "9.2"
+log4j         = "2.20.0"
+guava         = "21.0"
+gson          = "2.8.9"
+jopt          = "5.0.4"
+
+[libraries]
+mixin         = { module = "org.spongepowered:mixin",            version.ref = "mixin" }
+launchwrapper = { module = "net.minecraft:launchwrapper",        version.ref = "launchwrapper" }
+asm           = { module = "org.ow2.asm:asm",                    version.ref = "asm" }
+asm-tree      = { module = "org.ow2.asm:asm-tree",               version.ref = "asm" }
+asm-commons   = { module = "org.ow2.asm:asm-commons",            version.ref = "asm" }
+asm-analysis  = { module = "org.ow2.asm:asm-analysis",           version.ref = "asm" }
+asm-util      = { module = "org.ow2.asm:asm-util",               version.ref = "asm" }
+log4j-api     = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
+log4j-core    = { module = "org.apache.logging.log4j:log4j-core",version.ref = "log4j" }
+guava         = { module = "com.google.guava:guava",             version.ref = "guava" }
+gson          = { module = "com.google.code.gson:gson",          version.ref = "gson" }
+jopt          = { module = "net.sf.jopt-simple:jopt-simple",     version.ref = "jopt" }

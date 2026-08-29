@@ -1,0 +1,66 @@
+--- a/net/minecraft/game/block/misc/Portal.java
++++ b/net/minecraft/game/block/misc/Portal.java
+@@ -8,6 +8,8 @@
+ import net.minecraft.game.block.tileentity.TileEntity;
+ import net.minecraft.game.block.tileentity.other.PortalEntity;
+ import net.minecraft.game.block.utility.ContainerBlock;
++import net.minecraft.game.entity.Entity;
++import net.minecraft.game.entity.player.Player;
+ import net.minecraft.game.physics.BoundingBox;
+ import net.minecraft.game.world.World;
+ import net.minecraft.game.world.WorldSource;
+@@ -15,6 +17,14 @@
+ public class Portal extends ContainerBlock {
+    public static boolean breakPortal = true;
+ 
++   /** Dimension ids, in the order BlockList registers the dimension classes. */
++   private static final int OVERWORLD = 0;
++   private static final int HELL = 1;
++   private static final int VOID = 3;
++
++   /** Long enough to walk clear of the gate before it can fire again. */
++   private static final int PORTAL_COOLDOWN_TICKS = 100;
++
+    public Portal(int id, Material mat) {
+       super(id, mat);
+       this.setLightValue(1.0F);
+@@ -69,6 +79,39 @@
+       }
+    }
+ 
++   /**
++    * Walking into a slipgate asks to change dimension.
++    *
++    * Only the request is recorded. The switch itself happens in NetServerHandler once per
++    * tick, because recreatePlayerEntity replaces the player entity outright and doing that
++    * from inside a collision callback would mutate the world mid-iteration.
++    */
++   @Override
++   public void onEntityCollision(Entity entity, World world, int x, int y, int z) {
++      if (!world.isOnline && entity instanceof Player) {
++         Player player = (Player)entity;
++         if (player.portalCooldown <= 0 && player.pendingDimension < 0) {
++            player.pendingDimension = destinationFrom(player.dimension);
++            player.portalCooldown = PORTAL_COOLDOWN_TICKS;
++         }
++      }
++   }
++
++   /**
++    * Where a portal block leads, given where you are standing.
++    *
++    * BlockList builds exactly one Portal instance and assigns it to endPortal, so this block is
++    * the player-built void gate -- it is NOT the slipgate. Slipgate.generate only carves air and
++    * netherrack, and the overworld/hell trip happens by falling out of the world
++    * (Player.onFellOutOfWorld), never by touching a portal block. Sending this to hell was
++    * simply wrong.
++    *
++    * Every other dimension routes home, so a gate is never a one way trip.
++    */
++   private static int destinationFrom(int dimension) {
++      return dimension == OVERWORLD ? VOID : OVERWORLD;
++   }
++
+    @Override
+    public TileEntity getBlockEntity() {
+       return new PortalEntity();

@@ -1,0 +1,23 @@
+%%e Additions:
+* Mods button on the title menu, listing what is installed
+* Community Discord button, under Options
+* /home and the other teleport commands now work between dimensions
+* Custom commands are listed in /help
+
+%%e Changes:
+* Title menu buttons now fit on every GUI scale, including Large and Auto
+* Teleporting loads chunks far faster
+
+%%e Fixes:
+* Players were randomly rejected with "End of stream" -- the server was closing the connection before login, so it looked like authentication failing
+* Server lag and "Can't keep up" caused by random block ticks generating terrain
+* The Crimson was unreachable -- falling into a slipgate killed you instead of taking you there
+* Arriving from a slipgate dropped you on top of the world instead of at the gate
+* Teleporters, slipgates and teleport commands no longer kick you for cheating
+* Teleporters only worked for the player who placed them
+* Teleporters dropped you inside the rock instead of on top of the pad
+* Crawling into a cave and rejoining put you back on the surface
+* Void portal frames led to the Crimson instead of the Void
+* Dreamcatchers did nothing instead of taking you to the Sky
+* Falling out of the Sky dimension killed you instead of returning you home
+* Breaking blocks in adventure mode crashed the client

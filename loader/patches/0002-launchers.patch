@@ -1,0 +1,39 @@
+--- a/infinite/loader/Launchers.java
++++ b/infinite/loader/Launchers.java
+@@ -16,7 +16,7 @@
+       mojang(var0, new File(var1, ".minecraft"));
+       mojang(var0, new File(var1, "Library/Application Support/minecraft"));
+       mojang(var0, new File(var1, "curseforge/minecraft/Install"));
+-      ArrayList var3 = new ArrayList();
++      ArrayList<File> var3 = new ArrayList<File>();
+       addDir(var3, var2);
+       addDir(var3, System.getenv("LOCALAPPDATA"));
+       addDir(var3, var1);
+@@ -24,6 +24,11 @@
+       addDir(var3, var1 + File.separator + "Documents");
+       addDir(var3, var1 + File.separator + "Downloads");
+       addDir(var3, var1 + File.separator + ".local/share");
++      // Flatpak keeps each app's data under ~/.var/app/<app-id>/data, which is how Prism and
++      // MultiMC are installed on the Steam Deck and on most Linux distros using Discover.
++      // Adding it as a search root is required twice over: it is not under any root above, and
++      // scanForPrism skips every directory whose name starts with a dot, so walking ~ alone
++      // could never reach ".var". Children of this root are normal names, so the filter is fine.
+       addDir(var3, var1 + File.separator + ".var/app");
+       addDir(var3, var1 + File.separator + "Library/Application Support");
+       addDir(var3, System.getenv("ProgramFiles"));
+@@ -64,11 +69,10 @@
+    }
+ 
+    private static void mojang(List<Launchers.Found> var0, File var1) {
+-      if (var1 != null
+-         && var1.isDirectory()
+-         && !contains(var0, var1)
+-         && (new File(var1, "launcher_profiles.json").isFile() || new File(var1, "versions").isDirectory())) {
+-         var0.add(new Launchers.Found(Launchers.Kind.MOJANG, var1, "Minecraft Launcher"));
++      if (var1 != null && var1.isDirectory() && !contains(var0, var1)) {
++         if (new File(var1, "launcher_profiles.json").isFile() || new File(var1, "versions").isDirectory()) {
++            var0.add(new Launchers.Found(Launchers.Kind.MOJANG, var1, "Minecraft Launcher"));
++         }
+       }
+    }
+ 

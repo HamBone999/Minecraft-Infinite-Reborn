@@ -1,0 +1,171 @@
+--- a/net/minecraft/game/entity/player/Player.java
++++ b/net/minecraft/game/entity/player/Player.java
+@@ -220,6 +220,10 @@
+ 
+    @Override
+    public void onTick() {
++      if (this.portalCooldown > 0) {
++         this.portalCooldown--;
++      }
++
+       if (this.itemInUse != null) {
+          ItemStack heldItem = this.inventory.getCurrentItem();
+          if (this.inventory.getOffHandItem() != null && this.inventory.getOffHandItem() == this.itemInUse) {
+@@ -701,8 +705,6 @@
+       if (this.fallDistance > 50.0F && this.isInCloud()) {
+          this.triggerAchievement(AchievementList.cloud);
+       }
+-
+-      this.switchDimension(0, false);
+    }
+ 
+    @Override
+@@ -864,7 +866,123 @@
+    public void onFoodEaten() {
+    }
+ 
+-   public void switchDimension(int i, boolean forced) {
++   /**
++    * Dimension the player has asked to move to, or -1. Set by the portal block, consumed once
++    * per tick by NetServerHandler.
++    *
++    * The switch cannot happen inside the collision callback: recreatePlayerEntity destroys this
++    * entity and builds a replacement, and doing that while the world is iterating entities is
++    * a use-after-free waiting to happen. So the portal only records the request.
++    */
++   public int pendingDimension = -1;
++
++   /** Ticks before another portal can fire, so standing in one does not bounce you forever. */
++   public int portalCooldown;
++
++   /** Where to land after a pending transfer, when the caller knows. */
++   public double pendingX;
++   public double pendingY;
++   public double pendingZ;
++   public boolean pendingHasDestination;
++
++   /** Ask to change dimension and let the server pick a safe arrival spot. */
++   public void requestDimension(int dim) {
++      this.pendingDimension = dim;
++      this.pendingHasDestination = false;
++   }
++
++   /** Ask to change dimension and arrive at a known point -- /home, /warp, /spawn. */
++   public void requestDimension(int dim, double x, double y, double z) {
++      this.pendingDimension = dim;
++      this.pendingX = x;
++      this.pendingY = y;
++      this.pendingZ = z;
++      this.pendingHasDestination = true;
++   }
++
++   /**
++    * The void is the road to hell, not a death sentence.
++    *
++    * Only the request is recorded -- NetServerHandler performs the switch between ticks,
++    * because recreatePlayerEntity replaces this entity outright. Falling in any dimension
++    * other than the overworld still kills, so hell's void is not a free ride home.
++    */
++   @Override
++   protected void onFellOutOfWorld() {
++      if (this.world.isOnline || this.pendingDimension >= 0) {
++         super.onFellOutOfWorld();
++         return;
++      }
++
++      int destination = voidFallDestination(this.dimension);
++      if (destination < 0) {
++         super.onFellOutOfWorld();
++         return;
++      }
++
++      this.pendingDimension = destination;
++      this.portalCooldown = 100;
++      this.fallDistance = 0.0F;
++      this.motionY = 0.0;
++   }
++
++   /**
++    * Where falling out of the world takes you, or -1 to die.
++    *
++    * Only two dimensions catch you. The overworld drops into hell, which is the slipgate: it is
++    * a pit rather than a portal block, so the fall *is* the mechanism and removing it would make
++    * hell unreachable. The sky returns you to the overworld, because falling off a sky island is
++    * how you leave it, not a mistake worth an inventory.
++    *
++    * Everywhere else the void kills, as it did before any of this.
++    */
++   private static int voidFallDestination(int dimension) {
++      if (dimension == 0) {
++         return 1;
++      }
++
++      return dimension == 2 ? 0 : -1;
++   }
++
++   /**
++    * Send this player to another dimension. Used by the dreamcatcher (sky) and by anything else
++    * that wants a transfer without a portal block.
++    *
++    * The body used to be empty, which is why sleeping with a dreamcatcher did nothing: the call
++    * was there, it just went nowhere. Only the request is recorded -- NetServerHandler performs
++    * the switch between ticks, because recreatePlayerEntity replaces this entity outright.
++    *
++    * Asking for the dimension you are already in means "go home", so the same call that sends
++    * you to the sky also brings you back rather than being a one way trip.
++    */
++   public void switchDimension(int target, boolean forced) {
++      if (this.world.isOnline) {
++         return;
++      }
++
++      if (this.portalCooldown > 0 && !forced) {
++         return;
++      }
++
++      int destination = target == this.dimension ? 0 : target;
++      if (destination == this.dimension || this.pendingDimension >= 0) {
++         return;
++      }
++
++      this.requestDimension(destination);
++      this.portalCooldown = 100;
++   }
++
++   /**
++    * Move this player and make sure the client is told about it.
++    *
++    * setPosition() alone only moves the entity server-side: the client keeps reporting its old
++    * position, the server sees the whole jump as one movement delta, and anything past the
++    * ~120 block speed ceiling is treated as cheating. EntityPlayerMP overrides this to route
++    * through the network handler, which resets the movement check and sends a teleport packet.
++    */
++   public void teleportAndNotify(double x, double y, double z) {
++      this.setPosition(x, y, z);
+    }
+ 
+    public void onKillEntity(Mob victim) {
+@@ -1156,6 +1274,12 @@
+       this.sleepTimer = tag.getShort("SleepTimer");
+       this.timeWithoutRest = tag.getInteger("TimeWithoutRest");
+       this.dimension = tag.getInteger("Dimension");
++      // Restore the prone hitbox before anything can try to place the player. setCrawling(true)
++      // is position-safe: only the false branch applies the +1.3 stand-up offset.
++      this.crawling = tag.getBoolean("Crawling");
++      if (this.crawling) {
++         this.setCrawling(true);
++      }
+       if (this.sleeping) {
+          this.bedPosition = new Position(MathHelper.floor_double(this.posX), MathHelper.floor_double(this.posY), MathHelper.floor_double(this.posZ));
+          this.wakeUpPlayer(true, true, false);
+@@ -1249,6 +1373,10 @@
+       tag.setInteger("TimeWithoutRest", this.timeWithoutRest);
+       tag.setInteger("Dimension", this.dimension);
+       tag.setBoolean("FallFlying", this.isGliding());
++      // Crawling changes the hitbox from 0.6x1.8 to 0.6x0.9. Without persisting it, a player
++      // who logs out prone in a one-block tunnel loads back at full height, embedded in rock,
++      // and gets ejected upward until they reach open air -- i.e. the surface.
++      tag.setBoolean("Crawling", this.crawling);
+       if (this.playerSpawn != null) {
+          tag.setInteger("SpawnX", this.playerSpawn.x);
+          tag.setInteger("SpawnY", this.playerSpawn.y);

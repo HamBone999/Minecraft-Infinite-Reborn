@@ -1,0 +1,112 @@
+--- a/net/minecraft/client/gui/screens/title/TitleScreen.java
++++ b/net/minecraft/client/gui/screens/title/TitleScreen.java
+@@ -2,9 +2,11 @@
+ 
+ import java.io.BufferedReader;
+ import java.io.InputStreamReader;
++import java.net.URI;
+ import java.nio.charset.Charset;
+ import java.util.ArrayList;
+ import java.util.Random;
++import net.minecraft.client.ClientUtils;
+ import net.minecraft.client.gui.button.Button;
+ import net.minecraft.client.gui.screens.GuiScreen;
+ import net.minecraft.client.gui.screens.multiplayer.ServerSelectScreen;
+@@ -20,6 +22,10 @@
+ import org.lwjgl.util.glu.GLU;
+ 
+ public class TitleScreen extends GuiScreen {
++   /** Community Discord, opened by the button under the language globe. */
++   private static final String DISCORD_INVITE = "https://discord.gg/2jb7UbXysj";
++   /** Height the roomy layout needs below the first button: 4 rows, the gap, Options, the icons. */
++   private static final int TALL_LAYOUT = 152;
+    private static final Random random = new Random();
+    private TitleScreen.LogoEffectRandomizer[][] logoEffects;
+    private static final BlocksRenderer renderBlocks = new BlocksRenderer();
+@@ -63,13 +69,43 @@
+ 
+    public void initGui() {
+       this.buttons.clear();
+-      this.buttons.add(new Button(1, this.width / 2 - 100, this.height / 4 + 48, 200, 20, "menu.singleplayer", 64, 128));
+-      this.buttons.add(new Button(2, this.width / 2 - 100, this.height / 4 + 72, 200, 20, "menu.multiplayer", 80, 128));
+-      this.buttons.add(new Button(3, this.width / 2 - 100, this.height / 4 + 96, 200, 20, "menu.changelog", 0, 128));
+-      this.buttons.add(new Button(0, this.width / 2 - 100, this.height / 4 + 120 + 12, 100, 20, "menu.options", 48, 128));
+-      this.buttons.add(new Button(4, this.width / 2 + 4, this.height / 4 + 120 + 12, 97, 20, "menu.quit", 96, 128));
+-      this.buttons.add(new Button(5, this.width / 2 + 105, this.height / 4 + 120 + 12, 20, 20, "", "title.credits", 16, 128));
+-      this.buttons.add(new Button(6, this.width / 2 - 125, this.height / 4 + 120 + 12, 20, 20, "", "options.languages", 0, 160));
++      int top = this.height / 4 + 48;
++      int cx = this.width / 2;
++
++      // ScreenRescaler keeps raising the scale while height/(scale+1) stays at or above 240, so
++      // the GUI can be as short as 240 units -- which is what AUTO picks on a large display. The
++      // roomy layout needs TALL_LAYOUT below `top` and stops fitting under about 283, where the
++      // icon row slid off the bottom edge and through the version text.
++      //
++      // Rather than compromise every size, drop to a compact arrangement only when the roomy one
++      // would clip: the icon row folds onto the free space at the ends of the Options/Quit row,
++      // and the gap above that row closes up. Anything with room looks exactly as it did.
++      boolean compact = top + TALL_LAYOUT > this.height - 12;
++
++      this.buttons.add(new Button(1, cx - 100, top, 200, 20, "menu.singleplayer", 64, 128));
++      this.buttons.add(new Button(2, cx - 100, top + 24, 200, 20, "menu.multiplayer", 80, 128));
++      this.buttons.add(new Button(3, cx - 100, top + 48, 200, 20, "menu.changelog", 0, 128));
++      this.buttons.add(new Button(8, cx - 100, top + 72, 200, 20, "menu.mods", 32, 128));
++
++      int optionsY = top + (compact ? 96 : 108);
++      this.buttons.add(new Button(0, cx - 100, optionsY, 100, 20, "menu.options", 48, 128));
++      this.buttons.add(new Button(4, cx + 4, optionsY, 97, 20, "menu.quit", 96, 128));
++
++      if (compact) {
++         // Two to the left of Options, one to the right of Quit. The widest point is 149 left of
++         // centre, and the rescaler guarantees at least 320 units of width, so this always fits.
++         this.buttons.add(new Button(7, cx - 149, optionsY, 20, 20, "", "title.discord", 16, 160));
++         this.buttons.add(new Button(6, cx - 125, optionsY, 20, 20, "", "options.languages", 0, 160));
++         this.buttons.add(new Button(5, cx + 105, optionsY, 20, 20, "", "title.credits", 16, 128));
++      } else {
++         // Their own centred row: three 20-wide buttons with 4 of gap is 68 across, so it starts
++         // 34 left of centre and lines up with the 200-wide buttons above.
++         int iconY = optionsY + 24;
++         this.buttons.add(new Button(6, cx - 34, iconY, 20, 20, "", "options.languages", 0, 160));
++         this.buttons.add(new Button(7, cx - 10, iconY, 20, 20, "", "title.discord", 16, 160));
++         this.buttons.add(new Button(5, cx + 14, iconY, 20, 20, "", "title.credits", 16, 128));
++      }
++
+       if (this.mc.session == null) {
+          ((Button)this.buttons.get(1)).enabled = false;
+       }
+@@ -94,6 +130,10 @@
+          this.mc.setScreen(new ChangelogScreen(this));
+       }
+ 
++      if (btn.id == 8) {
++         this.mc.setScreen(new ModsScreen(this));
++      }
++
+       if (btn.id == 4) {
+          this.mc.gameShutdown();
+          System.exit(0);
+@@ -106,6 +146,15 @@
+       if (btn.id == 6) {
+          this.mc.setScreen(new LanguagePackScreen(this.mc.options));
+       }
++
++      if (btn.id == 7) {
++         // Hand off to the desktop browser. ClientUtils already falls back to LWJGL's opener,
++         // and the catch means a machine with neither cannot take the title screen down.
++         try {
++            ClientUtils.openURI(new URI(DISCORD_INVITE));
++         } catch (Throwable var3) {
++         }
++      }
+    }
+ 
+    private void drawPanorama(int x, int y, float tickDelta) {
+@@ -282,7 +331,7 @@
+       GL11.glPopMatrix();
+       String disclaimer = Translator.getInstance().translateKey("gui.credits");
+       this.drawString(this.fontRenderer, disclaimer, this.width - this.fontRenderer.getStringWidth(disclaimer) - 2, this.height - 10, 16777215);
+-      this.drawString(this.fontRenderer, "Minecraft Infinite 1.0-210826", 2, this.height - 10, 16777215);
++      this.drawString(this.fontRenderer, "Minecraft Infinite 1.0-300826", 2, this.height - 10, 16777215);
+       this.drawCenteredString(this.fontRenderer, resource, this.width / 2, 10, 16777215);
+       super.drawScreen(x, y, tickDelta);
+    }

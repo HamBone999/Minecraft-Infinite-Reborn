@@ -1,0 +1,14 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "landclaim"
+version = "0.1.0"
+displayName = "Golden Shovel Land Claims"
+description = "Right-click two corners with a gold shovel to protect your build."
+authors = "hambone"
+entrypoint = "landclaim.LandClaimMod"
+
+[[mixins]]
+config = "landclaim.mixins.json"

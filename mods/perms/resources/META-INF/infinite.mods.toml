@@ -1,0 +1,14 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "perms"
+version = "0.1.0"
+displayName = "Group Permissions"
+description = "Gate commands by group. Operators always bypass."
+authors = "hambone"
+entrypoint = "perms.PermsMod"
+
+[[mixins]]
+config = "perms.mixins.json"

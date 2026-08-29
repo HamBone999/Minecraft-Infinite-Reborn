@@ -1,0 +1,61 @@
+--- a/net/minecraft/server/player/EntityPlayerMP.java
++++ b/net/minecraft/server/player/EntityPlayerMP.java
+@@ -191,6 +191,23 @@
+       }
+    }
+ 
++   /**
++    * Route teleports through the network handler so the client is told.
++    *
++    * NetServerHandler.teleportTo() clears hasMoved -- which suspends the "moved too quickly"
++    * check until the client confirms the new position -- and sends a PlayerTeleportPacket.
++    * A bare setPosition() does neither, so any hop beyond the ~120 block ceiling gets the
++    * player kicked for hacking.
++    */
++   @Override
++   public void teleportAndNotify(double x, double y, double z) {
++      if (this.playerNetServerHandler != null) {
++         this.playerNetServerHandler.teleportTo(x, y, z, this.yaw, this.pitch);
++      } else {
++         super.teleportAndNotify(x, y, z);
++      }
++   }
++
+    @Override
+    public void onDeath(DamageSource entity1) {
+       super.onDeath(entity1);
+@@ -370,15 +387,26 @@
+       super.onTick();
+       this.updateBiomesExplored();
+       this.updateSpyglass();
+-      if (z1 && !this.loadedChunks.isEmpty()) {
+-         long chunkCoordIntPair7 = this.loadedChunks.get(0);
+-         boolean z8 = false;
+-         if (this.playerNetServerHandler.getNumChunkDataPackets() < 4) {
+-            z8 = true;
+-         }
++      // Keep the outbound chunk queue topped up instead of adding exactly one chunk per call.
++      //
++      // This runs from the movement packet handler, not from the server tick, so the old code
++      // delivered at most one chunk per packet the client sent. After a teleport the whole view
++      // has to be resent, and at roughly twenty packets a second that is twenty chunks a second
++      // -- which is why arriving somewhere new means standing in a hole watching terrain appear.
++      //
++      // The "< 4" test is real backpressure: it is the number of chunk packets queued and not
++      // yet written to the socket. That threshold is unchanged, so the peak buffered per player
++      // is exactly what it was before. The only difference is that the queue is refilled as soon
++      // as it drains rather than one slot per inbound packet.
++      if (z1) {
++         WorldServer worldServer9 = null;
++
++         while (!this.loadedChunks.isEmpty() && this.playerNetServerHandler.getNumChunkDataPackets() < 4) {
++            if (worldServer9 == null) {
++               worldServer9 = this.mcServer.getWorldManager(this.dimension);
++            }
+ 
+-         if (z8) {
+-            WorldServer worldServer9 = this.mcServer.getWorldManager(this.dimension);
++            long chunkCoordIntPair7 = this.loadedChunks.get(0);
+             this.loadedChunks.remove(chunkCoordIntPair7);
+             int chunkX = ChunkUtils.getChunkX(chunkCoordIntPair7);
+             int chunkZ = ChunkUtils.getChunkZ(chunkCoordIntPair7);

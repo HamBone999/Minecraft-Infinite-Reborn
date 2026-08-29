@@ -1,0 +1,8 @@
+# The decompiler is pinned, and bumping it is a deliberate commit with regenerated patches.
+#
+# Patches are diffs against decompiler output. Two people on different versions get different
+# source and every patch misapplies -- so this file, not "whatever is installed", decides.
+tool   = vineflower
+sha1   = see tools/vineflower.jar.sha1 in the release, or download and verify before use
+flags  = -dgs=1
+runtime= Java 11 or newer to RUN the decompiler; output targets Java 8

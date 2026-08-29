@@ -1,0 +1,18 @@
+--- a/net/minecraft/game/world/World.java
++++ b/net/minecraft/game/world/World.java
+@@ -1795,6 +1795,15 @@
+                int blockX = (blockY & 127) - 64 + x;
+                int blockZ = (blockY >> 8 & 127) - 64 + zx;
+                blockY = (blockY >> 16) % (this.settings.getMaxSections() * 16);
++               // These positions are sampled +/-64 blocks around the player, which reaches up
++               // to four chunks away and routinely lands outside the loaded set. getBlockId ->
++               // getChunk -> generateChunk, so an unguarded read here generates whole chunks
++               // synchronously inside the tick loop. blockExists is a bounds check plus a map
++               // lookup and never generates, so skip positions that are not already loaded.
++               if (!this.blockExists(blockX, blockY, blockZ)) {
++                  continue;
++               }
++
+                int block = this.getBlockId(blockX, blockY, blockZ);
+                if (Block.canTick.get(block) && !this.physicsDisabled()) {
+                   BlockList.blocks[block].onTick(this, blockX, blockY, blockZ, this.rand);

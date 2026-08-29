@@ -1,0 +1,140 @@
+--- a/infinite/loader/Profiles.java
++++ b/infinite/loader/Profiles.java
+@@ -1,6 +1,5 @@
+ package infinite.loader;
+ 
+-import infinite.loader.Loader.Progress;
+ import java.io.File;
+ import java.io.FileInputStream;
+ import java.io.FileOutputStream;
+@@ -17,7 +16,7 @@
+    private Profiles() {
+    }
+ 
+-   static String installMojang(File var0, File var1, String var2, Progress var3) throws IOException {
++   static String installMojang(File var0, File var1, String var2, Loader.Progress var3) throws IOException {
+       String var4 = "infinite-" + var2;
+       var3.step("NOTE: close the Minecraft launcher completely before running this.");
+       var3.step("      It rewrites launcher_profiles.json on exit and will undo the change.");
+@@ -94,7 +93,7 @@
+    }
+ 
+    private static String lwjgl(String var0) {
+-      return "    { \"name\": \"" + var0 + "2.9.4-nightly-20150209\", \"url\": \"https://libraries.minecraft.net/\" }";
++      return "    { \"name\": \"" + var0 + "2.9.4-nightly-20150209" + "\", \"url\": \"https://libraries.minecraft.net/\" }";
+    }
+ 
+    private static String lwjglNatives() {
+@@ -125,24 +124,24 @@
+                throw new IOException(
+                   "launcher_profiles.json has no \"profiles\" section; not editing it. Add the profile by hand, or register with Prism instead."
+                );
++            } else {
++               int var8 = var6.indexOf(123, var7);
++               if (var8 < 0) {
++                  throw new IOException("launcher_profiles.json is not shaped as expected");
++               } else {
++                  copyBytes(var0, new File(var0.getAbsolutePath() + ".infinite-backup"));
++                  int var9 = var8 + 1;
++                  String var10 = var6.substring(var9).trim();
++                  String var11 = var10.startsWith("}") ? "" : ",";
++                  String var12 = var6.substring(0, var9) + "\n    " + var5 + var11 + var6.substring(var9);
++                  write(var0, var12);
++               }
+             }
+-
+-            int var8 = var6.indexOf(123, var7);
+-            if (var8 < 0) {
+-               throw new IOException("launcher_profiles.json is not shaped as expected");
+-            }
+-
+-            copyBytes(var0, new File(var0.getAbsolutePath() + ".infinite-backup"));
+-            int var9 = var8 + 1;
+-            String var10 = var6.substring(var9).trim();
+-            String var11 = var10.startsWith("}") ? "" : ",";
+-            String var12 = var6.substring(0, var9) + "\n    " + var5 + var11 + var6.substring(var9);
+-            write(var0, var12);
+          }
+       }
+    }
+ 
+-   static void installPrism(File var0, File var1, String var2, Progress var3) throws IOException {
++   static void installPrism(File var0, File var1, String var2, Loader.Progress var3) throws IOException {
+       File var4 = new File(var0, "patches");
+       File var5 = new File(var0, "jarmods");
+       if (!var4.isDirectory() && !var4.mkdirs()) {
+@@ -170,16 +169,16 @@
+                }
+             }
+ 
+-            File var19 = new File(var0, "libraries");
+-            if (var19.isDirectory() && deleteTree(var19)) {
++            File var18 = new File(var0, "libraries");
++            if (var18.isDirectory() && deleteTree(var18)) {
+                var3.step("cleaned  : removed the libraries/ layout from a previous install");
+             }
+ 
+             write(new File(var4, "net.minecraft.json"), minecraftOverride());
+             var3.step("patch    -> patches/net.minecraft.json  (drops legacyLaunch)");
+-            StringBuilder var20 = new StringBuilder();
++            StringBuilder var19 = new StringBuilder();
+             if (var10) {
+-               var20.append("        {\n")
++               var19.append("        {\n")
+                   .append("            \"name\": \"org.multimc.jarmods:infinite-assets:")
+                   .append(var2)
+                   .append("\",\n")
+@@ -191,7 +190,7 @@
+                   .append("        },\n");
+             }
+ 
+-            var20.append("        {\n")
++            var19.append("        {\n")
+                .append("            \"name\": \"org.multimc.jarmods:infinite:")
+                .append(var2)
+                .append("\",\n")
+@@ -206,7 +205,7 @@
+                "{\n    \"formatVersion\": 1,\n    \"uid\": \"custom.jarmod.infinite\",\n    \"name\": \"Minecraft Infinite\",\n    \"version\": \""
+                   + var2
+                   + "\",\n    \"jarMods\": [\n"
+-                  + var20
++                  + var19
+                   + "    ]\n}\n"
+             );
+             write(
+@@ -215,14 +214,18 @@
+                   + var2
+                   + "\"\n        }\n    ]\n}\n"
+             );
+-            String var21 = "default";
+-            File var22 = var1.getParentFile() == null ? null : new File(var1.getParentFile(), "instanceIcon.png");
+-            if (var22 != null && var22.isFile()) {
+-               File var17 = new File(var0, "instanceIcon.png");
+-               copy(var22, var17);
+-               if (var17.isFile() && var17.length() == var22.length()) {
+-                  var21 = "instanceIcon";
+-                  var3.step("icon     -> instanceIcon.png  (" + var17.length() + " bytes)");
++            // Give the instance the project icon when the release ships one. MultiMC and Prism
++            // both resolve iconKey against instanceIcon.png sitting in the instance root, which
++            // is how an exported instance carries its own icon. Falls back to the stock icon so
++            // a release without the file still installs.
++            String var20 = "default";
++            File var21 = var1.getParentFile() == null ? null : new File(var1.getParentFile(), "instanceIcon.png");
++            if (var21 != null && var21.isFile()) {
++               File var22 = new File(var0, "instanceIcon.png");
++               copy(var21, var22);
++               if (var22.isFile() && var22.length() == var21.length()) {
++                  var20 = "instanceIcon";
++                  var3.step("icon     -> instanceIcon.png  (" + var22.length() + " bytes)");
+                } else {
+                   var3.step("icon     : could not copy instanceIcon.png, using the stock icon");
+                }
+@@ -231,7 +234,7 @@
+             write(
+                new File(var0, "instance.cfg"),
+                "InstanceType=OneSix\nOverrideJavaArgs=true\nJvmArgs=-Djava.util.Arrays.useLegacyMergeSort=true\niconKey="
+-                  + var21
++                  + var20
+                   + "\nname=Minecraft Infinite "
+                   + var2
+                   + "\nnotes=\n"
