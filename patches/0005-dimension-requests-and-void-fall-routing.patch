@@ -1,6 +1,6 @@
 --- a/net/minecraft/game/entity/player/Player.java
 +++ b/net/minecraft/game/entity/player/Player.java
-@@ -220,6 +220,10 @@
+@@ -226,6 +226,10 @@
  
     @Override
     public void onTick() {
@@ -8,10 +8,10 @@
 +         this.portalCooldown--;
 +      }
 +
-       if (this.itemInUse != null) {
-          ItemStack heldItem = this.inventory.getCurrentItem();
-          if (this.inventory.getOffHandItem() != null && this.inventory.getOffHandItem() == this.itemInUse) {
-@@ -701,8 +705,6 @@
+       this.prevRenderEye = this.renderEye;
+       float eye = this.getEyeHeight();
+       if (this.renderEye > eye) {
+@@ -722,8 +726,6 @@
        if (this.fallDistance > 50.0F && this.isInCloud()) {
           this.triggerAchievement(AchievementList.cloud);
        }
@@ -20,7 +20,7 @@
     }
  
     @Override
-@@ -864,7 +866,123 @@
+@@ -885,7 +887,123 @@
     public void onFoodEaten() {
     }
  
@@ -145,7 +145,7 @@
     }
  
     public void onKillEntity(Mob victim) {
-@@ -1156,6 +1274,12 @@
+@@ -1176,6 +1294,12 @@
        this.sleepTimer = tag.getShort("SleepTimer");
        this.timeWithoutRest = tag.getInteger("TimeWithoutRest");
        this.dimension = tag.getInteger("Dimension");
@@ -158,7 +158,7 @@
        if (this.sleeping) {
           this.bedPosition = new Position(MathHelper.floor_double(this.posX), MathHelper.floor_double(this.posY), MathHelper.floor_double(this.posZ));
           this.wakeUpPlayer(true, true, false);
-@@ -1249,6 +1373,10 @@
+@@ -1269,6 +1393,10 @@
        tag.setInteger("TimeWithoutRest", this.timeWithoutRest);
        tag.setInteger("Dimension", this.dimension);
        tag.setBoolean("FallFlying", this.isGliding());

@@ -1,8 +1,8 @@
 --- a/net/minecraft/commands/CoreCommands.java
 +++ b/net/minecraft/commands/CoreCommands.java
-@@ -15,5 +15,6 @@
-       GiveCommand.register(dispatcher);
+@@ -17,5 +17,6 @@
        GamemodeCommand.register(dispatcher);
+       ScoreCommand.register(dispatcher);
        TpCommand.register(dispatcher);
 +      net.minecraft.commands.custom.CustomCommandHelp.register(dispatcher);
     }

@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/network/NetServerHandler.java
 +++ b/net/minecraft/server/network/NetServerHandler.java
-@@ -22,6 +22,8 @@
+@@ -24,6 +24,8 @@
  import net.minecraft.game.item.misc.Book;
  import net.minecraft.game.item.misc.WrittenBook;
  import net.minecraft.game.physics.BoundingBox;
@@ -9,7 +9,7 @@
  import net.minecraft.game.world.util.Position;
  import net.minecraft.localization.Translator;
  import net.minecraft.network.NetworkHandler;
-@@ -87,6 +89,31 @@
+@@ -88,6 +90,31 @@
     }
  
     public void handlePackets() {
@@ -41,7 +41,7 @@
        this.netManager.update();
        if (this.lastHealth - this.currentHealth > 20) {
           this.currentHealth = this.lastHealth;
-@@ -96,6 +123,85 @@
+@@ -97,6 +124,85 @@
        }
     }
  
@@ -124,18 +124,19 @@
 +      return -1;
 +   }
 +
-    public void kickPlayer(String var1) {
+    public void kickPlayer(String string1) {
        this.playerEntity.updateRidingState();
-       this.sendPacket(new DisconnectPacket(var1));
-@@ -548,6 +654,11 @@
+       this.sendPacket(new DisconnectPacket(string1));
+@@ -533,6 +639,12 @@
     }
  
-    private void handleSlashCommand(String var1) {
+    private void handleSlashCommand(String string1) {
 +      // Built-in extras (homes, warps, tpa, msg...). They run before the vanilla dispatcher and
 +      // only consume what they actually handle, so unknown commands still reach it normally.
-+      if (net.minecraft.commands.custom.ServerCommands.handle(this.playerEntity, this.mcServer, var1)) {
++      if (net.minecraft.commands.custom.ServerCommands.handle(this.playerEntity, this.mcServer, string1)) {
 +         return;
 +      }
-       this.mcServer.addCommand(var1.substring(1).trim(), this::createCommandSource);
++
+       this.mcServer.addCommand(string1.substring(1).trim(), this::createCommandSource);
     }
  

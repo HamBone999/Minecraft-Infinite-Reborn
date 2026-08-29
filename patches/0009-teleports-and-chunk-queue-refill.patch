@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/player/EntityPlayerMP.java
 +++ b/net/minecraft/server/player/EntityPlayerMP.java
-@@ -191,6 +191,23 @@
+@@ -180,6 +180,23 @@
        }
     }
  

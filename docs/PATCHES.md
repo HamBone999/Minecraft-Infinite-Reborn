@@ -1,5 +1,18 @@
 # What each patch does
 
+All patches are generated against upstream **Minecraft Infinite 1.0-280826**, pinned in
+`base/`. Reborn is a set of diffs on top of that release, so an upstream bump means re-pinning
+and rebasing rather than merging two histories.
+
+> [!IMPORTANT]
+> Upstream changed `PROTOCOL_VERSION` to `20260823` and `NetLoginHandler` rejects any
+> mismatch outright, so client and server must ship together. A client on the old protocol is
+> turned away with "Outdated client!".
+
+When rebasing onto a new upstream, 7 of these 9 applied unchanged; the two that did not were
+context drift, not conflicts — upstream moved code around inside `Player.onTick` and renamed a
+parameter in `NetServerHandler.handleSlashCommand`.
+
 ## Server, `patches/`
 
 | Patch | Fixes |
@@ -28,11 +41,21 @@ honest, but nothing there is running until this is fixed.
 
 ## Client, `client/patches/`
 
-`0001-title-menu-mods-discord-and-scaling` — adds the Mods and Discord buttons, centres the
-icon row, and falls back to a compact layout when the GUI is short. `ScreenRescaler` allows
-heights down to 240 and the roomy layout needs 152px, so it stops fitting under about 283.
+`0001-title-menu-mods-discord-and-scaling` — removes the Changelog button, adds the Mods and
+Discord buttons, and centres the icon row under Options and Quit Game.
+
+`ScreenRescaler` raises the scale while `height / (scale + 1)` stays at or above 240, so the
+GUI can be as short as 240 units — which is what AUTO picks on a large display. Dropping the
+Changelog row brought the block down to 124px, which fits at 240 once it is clamped off the
+bottom edge, so there is a single layout at every scale rather than a compact fallback.
 
 Client classes that are entirely ours live in `client/src` instead: `ModsScreen`.
+
+> [!NOTE]
+> `ModsScreen` reads the `mods/` folder directly rather than asking `ModEngine.loadedMods()`.
+> The `infinite/` classes are not in the client jar at all, and on a launcher-registered
+> profile the loader never runs, so there would be nothing to ask. Reading the folder gives
+> the same answer in every launch path.
 
 ## Loader, `loader/patches/`
 

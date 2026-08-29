@@ -13,7 +13,14 @@
 set -e
 JAR=$1; SECS=${2:-45}; PORT=${3:-25599}
 [ -f "$JAR" ] || { sed -n '2,14p' "$0"; exit 2; }
-SRC=$(dirname "$(readlink -f "$JAR")")
+# Support files (InfiniteLoader, ServerBoot, libs/, mods/) come from the server directory,
+# which is usually NOT where the jar you are testing lives. Point INFINITE_HOME at it.
+SRC=${INFINITE_HOME:-$(dirname "$(readlink -f "$JAR")")}
+[ -f "$SRC/InfiniteLoader.jar" ] || {
+  echo "ERROR: no InfiniteLoader.jar in $SRC"
+  echo "       set INFINITE_HOME=/path/to/server to say where the support files are"
+  exit 1
+}
 SBX=$(mktemp -d /tmp/mcsbx.XXXXXX)
 trap 'kill "$PID" 2>/dev/null; rm -rf "$SBX"' EXIT INT TERM
 
