@@ -3,6 +3,9 @@
 Source for the Infinite client patches, the server patches, the mod loader changes and the
 three server addons.
 
+To install download the client zip from [Releases](https://github.com/HamBone999/Minecraft-Infinite-Reborn/releases).
+Follow install instructions included.
+
 > [!IMPORTANT]
 > **The game is not in this repo and never will be.** Infinite grew out of decompiled
 > Minecraft, so handing anyone a copy is distribution either way -- public repo, private
