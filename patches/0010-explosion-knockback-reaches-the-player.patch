@@ -1,0 +1,15 @@
+--- a/net/minecraft/game/world/util/Explosion.java
++++ b/net/minecraft/game/world/util/Explosion.java
+@@ -131,6 +131,12 @@
+                   entity.motionX += distX * force;
+                   entity.motionY += distY * force;
+                   entity.motionZ += distZ * force;
++                  if (entity instanceof Player) {
++                     // Without this the push is applied server-side and silently discarded. It
++                     // went unnoticed for ordinary explosions because the damage still lands;
++                     // the wind creeper deals no damage by design, so nothing happened at all.
++                     ((Player)entity).notifyVelocityChanged();
++                  }
+                }
+ 
+                if (entity instanceof Player && this.isWind && (this.exploder == null || this.exploder instanceof Windball)) {

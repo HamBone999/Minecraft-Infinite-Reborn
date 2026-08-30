@@ -20,7 +20,7 @@
     }
  
     @Override
-@@ -885,7 +887,123 @@
+@@ -885,7 +887,134 @@
     public void onFoodEaten() {
     }
  
@@ -140,12 +140,23 @@
 +    * ~120 block speed ceiling is treated as cheating. EntityPlayerMP overrides this to route
 +    * through the network handler, which resets the movement check and sends a teleport packet.
 +    */
++   /**
++    * Tell this player about a motion change the server just made to them.
++    *
++    * A client simulates its own movement, so changing motionX/Y/Z server-side on a player does
++    * nothing on its own -- the owning client never hears about it. EntityTrackerEntry sends
++    * velocity for entities to OTHER players, never to the player itself. Overridden in
++    * EntityPlayerMP; a no-op everywhere else, including on the client.
++    */
++   public void notifyVelocityChanged() {
++   }
++
 +   public void teleportAndNotify(double x, double y, double z) {
 +      this.setPosition(x, y, z);
     }
  
     public void onKillEntity(Mob victim) {
-@@ -1176,6 +1294,12 @@
+@@ -1176,6 +1305,12 @@
        this.sleepTimer = tag.getShort("SleepTimer");
        this.timeWithoutRest = tag.getInteger("TimeWithoutRest");
        this.dimension = tag.getInteger("Dimension");
@@ -158,7 +169,7 @@
        if (this.sleeping) {
           this.bedPosition = new Position(MathHelper.floor_double(this.posX), MathHelper.floor_double(this.posY), MathHelper.floor_double(this.posZ));
           this.wakeUpPlayer(true, true, false);
-@@ -1269,6 +1393,10 @@
+@@ -1269,6 +1404,10 @@
        tag.setInteger("TimeWithoutRest", this.timeWithoutRest);
        tag.setInteger("Dimension", this.dimension);
        tag.setBoolean("FallFlying", this.isGliding());

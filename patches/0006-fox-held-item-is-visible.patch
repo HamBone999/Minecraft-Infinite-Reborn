@@ -1,0 +1,42 @@
+--- a/net/minecraft/game/entity/mob/animal/tameable/Fox.java
++++ b/net/minecraft/game/entity/mob/animal/tameable/Fox.java
+@@ -47,6 +47,39 @@
+       this.behaviors.addTask(9, new LookAround(this));
+       this.detections.addTask(1, new ChooseWildTarget(this, Chicken.class, 16.0F, 16, false));
+       this.detections.addTask(1, new ChooseWildTarget(this, Bunny.class, 16.0F, 16, false));
++      // Slot 19 carries the held item to clients. 0/8/16/17 are taken by Entity, Mob and
++      // TameableMob, and Wolf uses 18.
++      this.dataSync.addObject(19, Integer.valueOf(0));
++   }
++
++   /**
++    * Publish the held item so clients can draw it.
++    *
++    * FoxRenderer.renderEquippedItems already renders fox.heldItem -- the rendering was never the
++    * problem. heldItem was a plain server-side field written only to NBT, so on a client it was
++    * always null and the fox appeared empty-handed while still holding the item for every
++    * gameplay purpose.
++    *
++    * Packed into one int rather than syncing an ItemStack: the stack is always a single item, and
++    * an int has no null to represent, which keeps the watcher slot valid from the moment the
++    * entity spawns.
++    */
++   @Override
++   public void onTick() {
++      super.onTick();
++      if (this.world.isOnline) {
++         int packed = this.dataSync.getObjectInt(19);
++         if (packed == 0) {
++            this.heldItem = null;
++         } else if (this.heldItem == null || this.heldItem.itemID != (packed & 65535) || this.heldItem.itemDmg != packed >>> 16) {
++            this.heldItem = new ItemStack(packed & 65535, 1, packed >>> 16);
++         }
++      } else {
++         int packed = this.heldItem == null ? 0 : this.heldItem.itemID & 65535 | (this.heldItem.itemDmg & 32767) << 16;
++         if (this.dataSync.getObjectInt(19) != packed) {
++            this.dataSync.updateObject(19, Integer.valueOf(packed));
++         }
++      }
+    }
+ 
+    public void setType() {

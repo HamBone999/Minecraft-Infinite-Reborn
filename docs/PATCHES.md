@@ -9,9 +9,10 @@ and rebasing rather than merging two histories.
 > mismatch outright, so client and server must ship together. A client on the old protocol is
 > turned away with "Outdated client!".
 
-When rebasing onto a new upstream, 7 of these 9 applied unchanged; the two that did not were
-context drift, not conflicts — upstream moved code around inside `Player.onTick` and renamed a
-parameter in `NetServerHandler.handleSlashCommand`.
+When this set was rebased onto 280826 it was 9 patches and 7 applied unchanged; the two that
+did not were context drift rather than conflicts — upstream had moved code inside
+`Player.onTick` and renamed a parameter of `NetServerHandler.handleSlashCommand`. Expect the
+same shape on the next bump: re-pin `base/`, re-run setup, and hand-rebase whatever rejects.
 
 ## Server, `patches/`
 
@@ -20,12 +21,32 @@ parameter in `NetServerHandler.handleSlashCommand`.
 | `0001-register-extra-commands-in-help` | custom commands were missing from `/help` |
 | `0002-teleporters-shared-and-safe-landing` | teleporters only worked for whoever placed them; arrivals landed inside rock |
 | `0003-portal-leads-to-the-void-not-hell` | the void portal frame sent you to the Crimson |
-| `0004-void-fall-is-overridable` | makes `Entity.onFellOutOfWorld` a hook rather than an inline `kill()` |
-| `0005-dimension-requests-and-void-fall-routing` | `switchDimension` was an empty method, so the dreamcatcher did nothing; crawl state was not persisted; void falls now route per dimension |
-| `0006-random-block-ticks-must-not-generate-chunks` | random ticks were driving terrain generation, causing `Can't keep up` |
-| `0007-dimension-arrival-at-slipgate-and-commands` | arrivals landed on the Crimson's roof instead of at the gate |
-| `0008-connection-throttle-window-and-no-re-arm` | random `End of stream` rejections |
-| `0009-teleports-and-chunk-queue-refill` | teleports tripped the movement check; chunks arrived one per movement packet |
+| `0004-void-fall-and-clients-see-fire` | makes `Entity.onFellOutOfWorld` a hook; also **upstream #33** -- the client blanked `Entity.fire` every tick, and `EntityRenderer` draws flames off that field, so nothing ever looked alight in multiplayer |
+| `0005-pets-stay-sitting-when-told-to` | **upstream #5 / #27** -- the sit action bailed out while the owner was fighting nearby, which cleared the mob's sitting flag while the order stayed set, so pets stood up and teleported mid-fight |
+| `0006-fox-held-item-is-visible` | **upstream #18** -- `Fox.heldItem` was server-only, so `FoxRenderer.renderEquippedItems` always drew an empty-handed fox |
+| `0007-pet-interaction-consumes-the-click` | **upstream #26** -- the pet interaction toggled sitting then reported the click unhandled, so the caller also ate the food you were holding |
+| `0008-frozen-mobs-look-frozen` | **upstream #23** -- `Mob.freeze` never left the server, so `MobRenderer`'s tint never triggered |
+| `0009-dimension-requests-and-velocity-hook` | dreamcatcher/void-fall routing, crawl persistence, and the velocity hook `Explosion` needs |
+| `0010-explosion-knockback-reaches-the-player` | **upstream #21** -- knockback was applied server-side and never transmitted; ordinary explosions hid it because the damage still landed, the wind creeper deals none |
+| `0011-random-block-ticks-must-not-generate-chunks` | random ticks were driving terrain generation, causing `Can't keep up` |
+| `0012-dimension-arrival-at-slipgate-and-commands` | arrivals landed on the Crimson's roof instead of at the gate |
+| `0013-connection-throttle-window-and-no-re-arm` | random `End of stream` rejections |
+| `0014-teleports-velocity-and-chunk-queue` | teleports tripped the movement check; chunks arrived one per movement packet |
+
+### Diagnosed but NOT fixed
+
+**Upstream #30, item sorting.** `ChestScreen`'s sort button calls `setSlotContents` and sends
+no packet -- it reorders the container purely client-side. That works in singleplayer, where
+client and server share a world, and is overwritten by the next container sync in multiplayer.
+Fixing it needs a new packet and a server-side handler, which is a protocol addition rather
+than a bug fix.
+
+### Three issues investigated and found NOT to be bugs
+
+Recorded so nobody re-treads them: **#22** (whip) -- the released-item dispatch chain is wired
+correctly through `NetServerHandler`; **#36** (variation) -- `Mob` persists it as the `Skin` tag
+and re-applies it via `setType()` on load; **#3** (sheep feeding) -- `Animal` has no breeding
+code at all, so it is a missing feature rather than a broken one.
 
 ### Two things deliberately NOT fixed
 

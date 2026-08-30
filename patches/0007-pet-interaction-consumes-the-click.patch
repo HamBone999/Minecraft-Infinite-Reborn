@@ -1,0 +1,13 @@
+--- a/net/minecraft/game/entity/mob/animal/tameable/TameableMob.java
++++ b/net/minecraft/game/entity/mob/animal/tameable/TameableMob.java
+@@ -142,6 +142,10 @@
+       if (player.username.equalsIgnoreCase(this.getOwnerName()) && !this.world.isOnline) {
+          this.sitAI.setSitting(!this.isSitting());
+          this.jumping = false;
++         // The click WAS consumed -- it toggled sitting. Reporting false here let the caller
++         // fall through to the normal item-use path, so right-clicking your pet while holding
++         // food both sat it down AND ate the food.
++         return true;
+       }
+ 
+       return false;

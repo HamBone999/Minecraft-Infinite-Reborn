@@ -1,0 +1,23 @@
+--- a/net/minecraft/game/entity/mob/ai/tameable/SitDown.java
++++ b/net/minecraft/game/entity/mob/ai/tameable/SitDown.java
+@@ -14,12 +14,14 @@
+    }
+ 
+    public boolean canExecute() {
+-      if (this.pet.isTamed() && !this.pet.isInWater() && this.pet.onGround) {
+-         Mob owner = this.pet.getOwner();
+-         return owner == null ? true : (this.pet.getDistanceSqTo(owner) < 144.0 && owner.getLastTarget() != null ? false : this.sitState);
+-      } else {
+-         return false;
+-      }
++      // Sitting is an explicit order, so only sitState may end it.
++      //
++      // This used to return false whenever the owner was within 12 blocks and had a target,
++      // which stopped the action -- and stop() clears the mob's sitting flag. The order itself
++      // (sitState) stayed set, so the pet stood up, followed and teleported for the duration of
++      // any fight near it, then sat back down afterwards. That is why it looked intermittent,
++      // and why a pet could also end up unresponsive with its two sitting states disagreeing.
++      return this.pet.isTamed() && !this.pet.isInWater() && this.pet.onGround && this.sitState;
+    }
+ 
+    public void start() {

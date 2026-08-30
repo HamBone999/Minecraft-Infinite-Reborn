@@ -1,9 +1,23 @@
 --- a/net/minecraft/server/player/EntityPlayerMP.java
 +++ b/net/minecraft/server/player/EntityPlayerMP.java
-@@ -180,6 +180,23 @@
-       }
+@@ -56,6 +56,7 @@
+ import net.minecraft.game.world.chunk.ChunkUtils;
+ import net.minecraft.game.world.util.Position;
+ import net.minecraft.localization.Translator;
++import net.minecraft.network.packet.entity.EntityVelocityPacket;
+ import net.minecraft.network.packet.Packet;
+ import net.minecraft.network.packet.container.ContainerClosePacket;
+ import net.minecraft.network.packet.container.ContainerContentsPacket;
+@@ -181,6 +182,30 @@
     }
  
+    @Override
++   public void notifyVelocityChanged() {
++      if (this.playerNetServerHandler != null) {
++         this.playerNetServerHandler.sendPacket(new EntityVelocityPacket(this));
++      }
++   }
++
 +   /**
 +    * Route teleports through the network handler so the client is told.
 +    *
@@ -21,10 +35,11 @@
 +      }
 +   }
 +
-    @Override
++   @Override
     public void onDeath(DamageSource entity1) {
        super.onDeath(entity1);
-@@ -370,15 +387,26 @@
+       this.score /= 2;
+@@ -370,15 +395,26 @@
        super.onTick();
        this.updateBiomesExplored();
        this.updateSpyglass();
