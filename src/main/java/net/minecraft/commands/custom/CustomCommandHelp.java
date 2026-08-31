@@ -23,8 +23,16 @@ public final class CustomCommandHelp {
    public static void register(CommandDispatcher<CommandSourceStack> d) {
       String[] plain = { "commands", "home", "sethome", "delhome", "spawn", "back", "list", "seed", "warps", "tpaccept", "tpdeny", "r" };
       String[] plainArgs = { "warp", "tpa", "msg" };
-      String[] opPlain = { "setspawn", "heal" };
-      String[] opArgs = { "setwarp", "delwarp", "time", "weather" };
+      String[] opPlain = { "setspawn", "heal", "ascend", "descend", "light" };
+      String[] opArgs = {
+         "setwarp", "delwarp", "time", "weather", "dimension", "dim",
+         "setblock", "fill", "clone", "summon", "kill", "clear", "effect", "enchant",
+         "xp", "say", "spawnpoint", "god", "killall", "up"
+      };
+
+      // The // commands are not registered here. A Brigadier literal cannot usefully be
+      // named "/set", and they are dispatched by handleSlashCommand before Brigadier sees
+      // the line anyway. /commands lists them instead.
 
       for (int i = 0; i < plain.length; i++) reg(d, plain[i], false, false);
       for (int i = 0; i < plainArgs.length; i++) reg(d, plainArgs[i], true, false);

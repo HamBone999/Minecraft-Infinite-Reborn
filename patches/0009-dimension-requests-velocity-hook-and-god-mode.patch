@@ -1,6 +1,18 @@
 --- a/net/minecraft/game/entity/player/Player.java
 +++ b/net/minecraft/game/entity/player/Player.java
-@@ -226,6 +226,10 @@
+@@ -98,6 +98,11 @@
+    public Bobber bobber = null;
+    public Hook hook = null;
+    public int score = 0;
++   /**
++    * Set by /god, checked in damageEntity below. Deliberately not persisted: god mode is
++    * something you switch on to do a job, and surviving a restart makes it easy to forget.
++    */
++   public boolean godMode;
+    private int sleepTimer;
+    private int timeWithoutRest;
+    private int damageRemainder = 0;
+@@ -226,6 +231,10 @@
  
     @Override
     public void onTick() {
@@ -11,7 +23,7 @@
        this.prevRenderEye = this.renderEye;
        float eye = this.getEyeHeight();
        if (this.renderEye > eye) {
-@@ -722,8 +726,6 @@
+@@ -722,8 +731,6 @@
        if (this.fallDistance > 50.0F && this.isInCloud()) {
           this.triggerAchievement(AchievementList.cloud);
        }
@@ -20,7 +32,7 @@
     }
  
     @Override
-@@ -885,7 +887,134 @@
+@@ -885,7 +892,134 @@
     public void onFoodEaten() {
     }
  
@@ -156,7 +168,7 @@
     }
  
     public void onKillEntity(Mob victim) {
-@@ -1176,6 +1305,12 @@
+@@ -1176,6 +1310,12 @@
        this.sleepTimer = tag.getShort("SleepTimer");
        this.timeWithoutRest = tag.getInteger("TimeWithoutRest");
        this.dimension = tag.getInteger("Dimension");
@@ -169,7 +181,7 @@
        if (this.sleeping) {
           this.bedPosition = new Position(MathHelper.floor_double(this.posX), MathHelper.floor_double(this.posY), MathHelper.floor_double(this.posZ));
           this.wakeUpPlayer(true, true, false);
-@@ -1269,6 +1404,10 @@
+@@ -1269,6 +1409,10 @@
        tag.setInteger("TimeWithoutRest", this.timeWithoutRest);
        tag.setInteger("Dimension", this.dimension);
        tag.setBoolean("FallFlying", this.isGliding());
@@ -180,3 +192,15 @@
        if (this.playerSpawn != null) {
           tag.setInteger("SpawnX", this.playerSpawn.x);
           tag.setInteger("SpawnY", this.playerSpawn.y);
+@@ -1373,7 +1517,10 @@
+    @Override
+    public boolean damageEntity(DamageSource src, int amount) {
+       this.age = 0;
+-      if (this.health <= 0 || this.properties.gamemode == 1 && !src.hurtCreative() || this.properties.gamemode == 3) {
++      if (this.health <= 0
++         || this.godMode && src != DamageSource.outOfWorld
++         || this.properties.gamemode == 1 && !src.hurtCreative()
++         || this.properties.gamemode == 3) {
+          return false;
+       } else if (this.inventory.accessorySlots[1] != null
+          && this.inventory.accessorySlots[1].itemID == ItemList.shield.id

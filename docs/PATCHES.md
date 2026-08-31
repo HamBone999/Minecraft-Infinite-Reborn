@@ -26,13 +26,73 @@ same shape on the next bump: re-pin `base/`, re-run setup, and hand-rebase whate
 | `0006-fox-held-item-is-visible` | **upstream #18** -- `Fox.heldItem` was server-only, so `FoxRenderer.renderEquippedItems` always drew an empty-handed fox |
 | `0007-pet-interaction-consumes-the-click` | **upstream #26** -- the pet interaction toggled sitting then reported the click unhandled, so the caller also ate the food you were holding |
 | `0008-frozen-mobs-look-frozen` | **upstream #23** -- `Mob.freeze` never left the server, so `MobRenderer`'s tint never triggered |
-| `0009-dimension-requests-and-velocity-hook` | dreamcatcher/void-fall routing, crawl persistence, and the velocity hook `Explosion` needs |
+| `0009-dimension-requests-velocity-hook-and-god-mode` | dreamcatcher/void-fall routing, crawl persistence, the velocity hook `Explosion` needs, and the `godMode` check in `damageEntity` that `/god` sets |
 | `0010-explosion-knockback-reaches-the-player` | **upstream #21** -- knockback was applied server-side and never transmitted; ordinary explosions hid it because the damage still landed, the wind creeper deals none |
 | `0011-random-block-ticks-must-not-generate-chunks` | random ticks were driving terrain generation, causing `Can't keep up` |
-| `0012-dimension-arrival-at-slipgate-and-commands` | arrivals landed on the Crimson's roof instead of at the gate |
+| `0012-slipgate-return-gate-commands-and-wand` | arrivals landed on the Crimson's roof instead of at the gate; also builds the return gate on arrival, and lets the selection wand consume clicks |
 | `0013-connection-throttle-window-and-no-re-arm` | random `End of stream` rejections |
 | `0014-teleports-velocity-and-chunk-queue` | teleports tripped the movement check; chunks arrived one per movement packet |
 | `0015-server-can-locate-structures` | `ChunkProviderServer.findClosestStructure` was a hardcoded `return null`, so nothing server-side could ever find a structure. The Crimson Eye always answered "no slipgate found nearby" in multiplayer, and slipgate arrivals could never aim at the gate on the far side |
+
+## The command set
+
+Almost everything added in 1.0-100926 is a **new class** in `sources/`, not a patch. The only
+edits to existing code are two hooks: a `godMode` check in `Player.damageEntity` (patch 0009)
+and the wand consuming clicks in `NetServerHandler` (patch 0012). The classes:
+
+| Class | Does |
+| --- | --- |
+| `Names` | friendly names for blocks, items, effects and enchantments, read off the vanilla `*List` classes by reflection. A block added upstream is spellable the day it lands. Wrong names suggest right ones. |
+| `Cmd` | argument parsing shared by all of them, including `~` relative coordinates |
+| `Edits` | the one bulk-block-writing path, and the undo history behind it |
+| `WorldCommands` | `/setblock` `/fill` `/clone` `/summon` `/kill` `/clear` `/effect` `/enchant` `/xp` `/say` `/spawnpoint` |
+| `PlayerCommands` | `/god` `/killall` `/up` `/ascend` `/descend` `/light` |
+| `Selection`, `WandHook`, `WorldEditCommands` | the `//` region editor |
+
+### Why bulk edits go through `Edits`
+
+Two things make them dangerous, and both are handled once rather than per command:
+
+**Notify-per-block stalls the tick.** Writing a large region with neighbour physics is
+hundreds of thousands of block updates inside one tick. So the bulk write is silent and the
+region is marked dirty once at the end, which resends the chunks without running physics --
+the same trade WorldEdit makes.
+
+**Writing into an unloaded chunk generates one, mid-tick.** That is the exact cause of the
+`Can't keep up` bug fixed in patch 0011, so every write is gated on `World.blockExists` and
+edits report how many blocks they skipped rather than silently generating terrain.
+
+Recording the overwritten blocks is built into the write path rather than bolted onto the
+commands, so `/fill` and `/clone` land on the same eight-deep undo stack as the `//` commands
+and `//undo` takes back the last edit whichever command made it.
+
+> [!NOTE]
+> `/kill` uses `DamageSource.outOfWorld`, which bypasses god mode deliberately -- otherwise an
+> op could switch on `/god` and have no way to kill themselves.
+
+> [!NOTE]
+> The wand is **opt-in per player** and off by default. WorldEdit proper treats any wooden axe
+> as a wand for anyone with permission; on a server where the ops also play, that means an op
+> cannot chop a tree without moving their selection. `//wand` toggles it. There is no wooden
+> axe in this build, so the wand is a stone axe.
+
+### Not included: /fly, /noclip, /instantmine
+
+These three are in every SinglePlayerCommands list and are **deliberately absent**, because
+they cannot be done from the server.
+
+Player movement here is simulated by the client and only checked by the server, and this build
+has no player flight at all: nothing anywhere sets `Entity.flying` for a player, and
+`LocalPlayer` reads the field only to widen the FOV. `Player.moveFlying` would supply
+horizontal speed, but nothing cancels gravity. Creative and spectator are exempt from the
+float kick in `NetServerHandler`, so the anticheat is not the obstacle -- the absence of any
+flight code is.
+
+Adding them means new client input and motion code plus a packet granting the capability, and
+a matching `PROTOCOL_VERSION` bump. That is a feature spanning both jars, not a command, so it
+belongs in its own release rather than riding along with thirty commands.
+
+`/difficulty` is absent for a simpler reason: this build has no difficulty setting to change.
 
 ### Diagnosed but NOT fixed
 

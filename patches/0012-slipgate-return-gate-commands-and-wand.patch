@@ -1,0 +1,267 @@
+--- a/net/minecraft/server/network/NetServerHandler.java
++++ b/net/minecraft/server/network/NetServerHandler.java
+@@ -12,18 +12,23 @@
+ import java.util.logging.Logger;
+ import net.minecraft.SharedConstants;
+ import net.minecraft.commands.CommandOutput;
++import net.minecraft.commands.custom.WandHook;
+ import net.minecraft.commands.CommandSourceStack;
+ import net.minecraft.game.block.tileentity.TileEntity;
+ import net.minecraft.game.block.tileentity.other.SignEntity;
+ import net.minecraft.game.block.tileentity.smelters.GeneratorEntity;
+ import net.minecraft.game.container.slot.Slot;
+ import net.minecraft.game.container.tileentities.AnvilContainer;
++import net.minecraft.game.block.BlockList;
++import net.minecraft.game.block.misc.Portal;
+ import net.minecraft.game.entity.Entity;
+ import net.minecraft.game.item.ItemList;
+ import net.minecraft.game.item.ItemStack;
+ import net.minecraft.game.item.misc.Book;
+ import net.minecraft.game.item.misc.WrittenBook;
+ import net.minecraft.game.physics.BoundingBox;
++import net.minecraft.game.world.chunk.BlockPosition;
++import net.minecraft.game.world.generation.structures.misc.Slipgate;
+ import net.minecraft.game.world.util.Position;
+ import net.minecraft.localization.Translator;
+ import net.minecraft.network.NetworkHandler;
+@@ -62,6 +67,9 @@
+ import net.minecraft.util.math.MathHelper;
+ 
+ public class NetServerHandler extends NetworkHandler implements CommandOutput {
++   /** Ticks before an arriving player can trigger a portal again. */
++   private static final int PORTAL_GRACE_TICKS = 100;
++
+    public static Logger logger = Logger.getLogger("Minecraft");
+    public NetworkManager netManager;
+    public boolean connectionClosed = false;
+@@ -88,6 +96,31 @@
+    }
+ 
+    public void handlePackets() {
++      // Consume a pending slipgate request here rather than in the portal's collision callback.
++      // recreatePlayerEntity tears this player down and returns a replacement, so it has to run
++      // between ticks, from the same place the death-respawn path already does it safely.
++      if (this.playerEntity.pendingDimension >= 0) {
++         int target = this.playerEntity.pendingDimension;
++         boolean known = this.playerEntity.pendingHasDestination;
++         double dx = this.playerEntity.pendingX;
++         double dy = this.playerEntity.pendingY;
++         double dz = this.playerEntity.pendingZ;
++         this.playerEntity.pendingDimension = -1;
++         this.playerEntity.pendingHasDestination = false;
++
++         if (target != this.playerEntity.dimension) {
++            this.playerEntity = this.mcServer.configManager.recreatePlayerEntity(this.playerEntity, target);
++            this.playerEntity.portalCooldown = 100;
++            if (known) {
++               this.arriveAt(this.playerEntity, dx, dy, dz);
++            } else {
++               this.placeInDestination(this.playerEntity);
++            }
++         } else if (known) {
++            this.arriveAt(this.playerEntity, dx, dy, dz);
++         }
++      }
++
+       this.netManager.update();
+       if (this.lastHealth - this.currentHealth > 20) {
+          this.currentHealth = this.lastHealth;
+@@ -97,11 +130,142 @@
+       }
+    }
+ 
++   /**
++    * Put a just-transferred player somewhere survivable, and where they expect to be.
++    *
++    * Slipgates generate in both worlds -- a pit in the overworld, a shaft through the ceiling in
++    * hell -- so falling through one should land you at the hell gate, not at the matching
++    * coordinates. Ask the destination world for its nearest slipgate and aim there.
++    *
++    * Height is found by scanning DOWNWARD. getTopSolidTile is useless here: it returns the
++    * highest solid block, and hell's roof is a solid slab across the top of the world, so it
++    * always answers "the roof" and drops the player on top of everything.
++    */
++   private void placeInDestination(EntityPlayerMP player) {
++      WorldServer world = this.mcServer.getWorldManager(player.dimension);
++      int x = MathHelper.floor_double(player.posX);
++      int z = MathHelper.floor_double(player.posZ);
++
++      BlockPosition gate = null;
++      try {
++         gate = world.findClosestStructure(Slipgate.class, x, MathHelper.floor_double(player.posY), z);
++      } catch (Throwable ignored) {
++      }
++
++      if (gate != null) {
++         x = gate.x;
++         z = gate.z;
++      }
++
++      world.chunkProviderServer.loadChunk(x >> 4, z >> 4);
++      int y = findFootingBelowRoof(world, x, z);
++      if (y < 0) {
++         Position spawn = world.getSpawnPoint();
++         x = spawn.x;
++         z = spawn.z;
++         world.chunkProviderServer.loadChunk(x >> 4, z >> 4);
++         y = findFootingBelowRoof(world, x, z);
++         if (y < 0) {
++            y = spawn.y;
++         }
++      }
++
++      player.fallDistance = 0.0F;
++      player.motionY = 0.0;
++      player.setPosition(x + 0.5, y, z + 0.5);
++      this.teleportTo(x + 0.5, y, z + 0.5, player.yaw, player.pitch);
++
++      boolean built = false;
++      if (gate == null) {
++         built = this.buildReturnGate(world, x, y, z);
++      }
++
++      // The arriving entity is a fresh object, so give it its own grace period rather than
++      // trusting the cooldown from the one that walked into the gate.
++      player.portalCooldown = PORTAL_GRACE_TICKS;
++
++      logger.info(
++         player.username + " arrived in dimension " + player.dimension + " at " + x + "," + y + "," + z
++            + (gate != null ? " (slipgate)" : built ? " (built a return gate)" : " (same column, no gate)")
++      );
++   }
++
++   /**
++    * Put a way home next to someone who arrived where there was no gate.
++    *
++    * Slipgates are worldgen, so a dimension can easily have none within reach -- and nothing else
++    * carries a player out of the Crimson, which left arrivals stranded until they died. Portal
++    * blocks already know where they lead (Portal.destinationFrom sends anything that is not the
++    * overworld home), so placing one is all that is needed.
++    *
++    * Placed beside the player rather than underfoot: it is a way back, not a trapdoor to fall
++    * through the instant you land.
++    */
++   private boolean buildReturnGate(WorldServer world, int x, int y, int z) {
++      int[][] offsets = new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
++
++      for (int i = 0; i < offsets.length; i++) {
++         int gx = x + offsets[i][0];
++         int gz = z + offsets[i][1];
++         if (world.getBlockId(gx, y, gz) != 0 || world.getBlockId(gx, y + 1, gz) != 0) {
++            continue;
++         }
++
++         // Portal.onNeighborChange clears a portal block whenever anything beside it changes,
++         // which is what stops a broken frame leaving one floating. Suppress that while the
++         // gate and its footing are being placed, or it deletes itself as it is built.
++         boolean wasBreaking = Portal.breakPortal;
++         Portal.breakPortal = false;
++         try {
++            if (!world.isBlockFull(gx, y - 1, gz)) {
++               world.setBlockWithNotify(gx, y - 1, gz, BlockList.netherrack.id);
++            }
++            world.setBlockWithNotify(gx, y, gz, BlockList.endPortal.id);
++         } finally {
++            Portal.breakPortal = wasBreaking;
++         }
++
++         return world.getBlockId(gx, y, gz) == BlockList.endPortal.id;
++      }
++
++      return false;
++   }
++
++   /** Land at a point the caller already knows is good, loading its chunk first. */
++   private void arriveAt(EntityPlayerMP player, double x, double y, double z) {
++      WorldServer world = this.mcServer.getWorldManager(player.dimension);
++      world.chunkProviderServer.loadChunk(MathHelper.floor_double(x) >> 4, MathHelper.floor_double(z) >> 4);
++      player.fallDistance = 0.0F;
++      player.motionY = 0.0;
++      player.setPosition(x, y, z);
++      this.teleportTo(x, y, z, player.yaw, player.pitch);
++   }
++
++   /** Lowest y with solid ground and two air blocks above, searching down from below the roof. */
++   private int findFootingBelowRoof(WorldServer world, int x, int z) {
++      // Start below the solid roof slab rather than at the very top, so the first hit is real
++      // terrain and never the underside of the ceiling. Measured in DIM1: roof occupies the top
++      // 16 layers, y176-287 is empty air, and the ground players want is y0-175.
++      int top = world.getWorldHeight() - 24;
++      if (top > 176) {
++         top = 176;
++      }
++
++      for (int y = top; y > 4; y--) {
++         if (world.getBlockId(x, y, z) != 0 && world.getBlockId(x, y + 1, z) == 0 && world.getBlockId(x, y + 2, z) == 0) {
++            return y + 1;
++         }
++      }
++
++      return -1;
++   }
++
+    public void kickPlayer(String string1) {
+       this.playerEntity.updateRidingState();
+       this.sendPacket(new DisconnectPacket(string1));
+       this.netManager.closeConnection();
+       this.mcServer.configManager.sendPacketToAll(new ChatPacket("§e" + this.playerEntity.username + " left the game."));
++      net.minecraft.commands.custom.ServerCommands.forget(this.playerEntity.username);
+       this.mcServer.configManager.playerLoggedOut(this.playerEntity);
+       this.connectionClosed = true;
+    }
+@@ -315,6 +479,17 @@
+    @Override
+    public void handleBlockDig(DigPacket packet14BlockDig1) {
+       WorldServer worldServer2 = this.mcServer.getWorldManager(this.playerEntity.dimension);
++      // The selection wand consumes the click, or the block would be selected and then broken.
++      if (WandHook.onDig(
++            this.playerEntity,
++            this.mcServer.configManager.isOp(this.playerEntity.username),
++            packet14BlockDig1.status,
++            packet14BlockDig1.xPosition,
++            packet14BlockDig1.yPosition,
++            packet14BlockDig1.zPosition)) {
++         return;
++      }
++
+       if (packet14BlockDig1.status == 4) {
+          this.playerEntity.dropCurrentItem(1);
+       } else if (packet14BlockDig1.status == 5) {
+@@ -384,6 +559,16 @@
+    @Override
+    public void handlePlace(PlacePacket packet15Place1) {
+       WorldServer worldServer2 = this.mcServer.getWorldManager(this.playerEntity.dimension);
++      if (packet15Place1.direction != 255
++         && WandHook.onPlace(
++            this.playerEntity,
++            this.mcServer.configManager.isOp(this.playerEntity.username),
++            packet15Place1.xPosition,
++            packet15Place1.yPosition,
++            packet15Place1.zPosition)) {
++         return;
++      }
++
+       ItemStack itemStack3 = this.playerEntity.inventory.getCurrentItem();
+       if (this.playerEntity.inventory.canUseItem()) {
+          itemStack3 = this.playerEntity.inventory.getOffHandItem();
+@@ -471,6 +656,7 @@
+    public void handleErrorMessage(String string1, Object... format) {
+       logger.info(this.playerEntity.username + " lost connection: " + Translator.getInstance().translateKeyFormat(string1, format));
+       this.mcServer.configManager.sendPacketToAll(new ChatPacket("§e" + this.playerEntity.username + " left the game."));
++      net.minecraft.commands.custom.ServerCommands.forget(this.playerEntity.username);
+       this.mcServer.configManager.playerLoggedOut(this.playerEntity);
+       this.connectionClosed = true;
+    }
+@@ -533,6 +719,12 @@
+    }
+ 
+    private void handleSlashCommand(String string1) {
++      // Built-in extras (homes, warps, tpa, msg...). They run before the vanilla dispatcher and
++      // only consume what they actually handle, so unknown commands still reach it normally.
++      if (net.minecraft.commands.custom.ServerCommands.handle(this.playerEntity, this.mcServer, string1)) {
++         return;
++      }
++
+       this.mcServer.addCommand(string1.substring(1).trim(), this::createCommandSource);
+    }
+ 

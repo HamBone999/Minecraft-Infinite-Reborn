@@ -40,7 +40,14 @@ public final class ServerCommands {
       String me = p.getName().toLowerCase();
       boolean op = server.configManager.isOp(me);
 
-      if (c.equals("commands") || c.equals("cmds")) { help(p, op); return true; }
+      if (c.equals("commands") || c.equals("cmds")) { help(p, op, a); return true; }
+
+      // The command set added in 1.0-100926: vanilla staples, the SPC-style player commands,
+      // and the // region editor. Each module returns true once it has handled the word, so a
+      // command only has to be spelled in one place.
+      if (WorldEditCommands.handle(p, server, c, a, op)) return true;
+      if (WorldCommands.handle(p, server, c, a, op)) return true;
+      if (PlayerCommands.handle(p, server, c, a, op)) return true;
 
       if (c.equals("sethome"))  { PointStore.put("home:" + me, here(p)); msg(p, "Home set in this dimension."); return true; }
       if (c.equals("home"))     { go(p, PointStore.get("home:" + me), "No home set. Use /sethome."); return true; }
@@ -72,6 +79,8 @@ public final class ServerCommands {
          whisper(p, server, b);
          return true;
       }
+
+      if (c.equals("dimension") || c.equals("dim")) { if (needOp(p, op)) return true; dimension(p, a); return true; }
 
       if (c.equals("setspawn")) { if (needOp(p, op)) return true; PointStore.put("spawn", here(p)); msg(p, "Spawn set."); return true; }
       if (c.equals("setwarp"))  { if (needOp(p, op)) return true;
@@ -267,14 +276,96 @@ public final class ServerCommands {
       msg(p, "  /whitelist list | add <player> | remove <player> | reload");
    }
 
-   private static void help(EntityPlayerMP p, boolean op) {
+   private static void help(EntityPlayerMP p, boolean op, String[] a) {
+      String topic = a.length > 1 ? a[1].toLowerCase() : "";
+
+      if (topic.startsWith("build") || topic.startsWith("edit")) {
+         if (!op) { msg(p, "Those are op commands."); return; }
+         msg(p, "Building:");
+         msg(p, "  /setblock <x y z> <block> [data]        one block");
+         msg(p, "  /fill <x y z> <x y z> <block> [data]    a box");
+         msg(p, "  /clone <x y z> <x y z> <to x y z>       copy a box elsewhere");
+         msg(p, "  ~ means \"where I am\", so /setblock ~ ~-1 ~ stone works.");
+         msg(p, "Region editing (two slashes, like WorldEdit):");
+         msg(p, "  //wand              toggle the selection wand on your axe");
+         msg(p, "  //pos1 //pos2       corners at your feet");
+         msg(p, "  //size //count <b>  what is selected");
+         msg(p, "  //set <block>       //replace <from> <to>");
+         msg(p, "  //copy //paste      //undo");
+         msg(p, "Undo covers /fill, /clone and every // edit, 8 deep.");
+         return;
+      }
+
       msg(p, "Added commands (all teleports work across dimensions):");
       msg(p, "  /home /sethome /delhome    /spawn    /back    /list    /seed");
       msg(p, "  /warp <n> /warps           /tpa <player> /tpaccept /tpdeny");
       msg(p, "  /msg <player> <text> /r");
       if (op) {
-         msg(p, "  op: /setspawn /setwarp /delwarp /time /weather /heal");
+         msg(p, "  op: /setspawn /setwarp /delwarp /time /weather /heal /dimension");
          msg(p, "  op: /whitelist list|add|remove|reload");
+         msg(p, "  op: /kill /clear /effect /enchant /xp /say /spawnpoint /summon");
+         msg(p, "  op: /god /killall /light /up /ascend /descend");
+         msg(p, "  op: /commands build   for /fill, /clone and the // region editor");
       }
+   }
+
+   /** Names accepted by /dimension, in id order. */
+   private static final String[] DIMENSION_NAMES = { "overworld", "crimson", "sky", "void", "ocean" };
+
+   /**
+    * Move yourself between dimensions.
+    *
+    * Goes through the same request the slipgates use, so arrival placement, the return gate and
+    * the client's dimension packet all behave exactly as they do walking in.
+    */
+   private static void dimension(EntityPlayerMP p, String[] a) {
+      if (a.length < 2) {
+         msg(p, "You are in " + nameOf(p.dimension) + " (" + p.dimension + ").");
+         msg(p, "Usage: /dimension <" + String.join("|", DIMENSION_NAMES) + "|0-4>");
+         return;
+      }
+
+      String want = a[1].toLowerCase();
+      int target = -1;
+      for (int i = 0; i < DIMENSION_NAMES.length; i++) {
+         if (DIMENSION_NAMES[i].equals(want)) {
+            target = i;
+            break;
+         }
+      }
+
+      if (target < 0) {
+         try {
+            target = Integer.parseInt(want);
+         } catch (NumberFormatException e) {
+            target = -1;
+         }
+      }
+
+      if (target < 0 || target >= DIMENSION_NAMES.length) {
+         msg(p, "Unknown dimension. Use one of: " + String.join(", ", DIMENSION_NAMES));
+         return;
+      }
+
+      if (target == p.dimension) {
+         msg(p, "You are already in " + nameOf(target) + ".");
+         return;
+      }
+
+      PointStore.put("back:" + p.getName().toLowerCase(), here(p));
+      p.requestDimension(target);
+      msg(p, "Moving you to " + nameOf(target) + "...");
+   }
+
+   private static String nameOf(int dimension) {
+      return dimension >= 0 && dimension < DIMENSION_NAMES.length ? DIMENSION_NAMES[dimension] : "dimension " + dimension;
+   }
+
+   /** Called when a player disconnects, so their edit history and selection do not leak. */
+   public static void forget(String name) {
+      String owner = name.toLowerCase();
+      Edits.forget(owner);
+      Selection.forget(owner);
+      WandHook.forget(owner);
    }
 }
