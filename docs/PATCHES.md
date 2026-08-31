@@ -32,6 +32,7 @@ same shape on the next bump: re-pin `base/`, re-run setup, and hand-rebase whate
 | `0012-dimension-arrival-at-slipgate-and-commands` | arrivals landed on the Crimson's roof instead of at the gate |
 | `0013-connection-throttle-window-and-no-re-arm` | random `End of stream` rejections |
 | `0014-teleports-velocity-and-chunk-queue` | teleports tripped the movement check; chunks arrived one per movement packet |
+| `0015-server-can-locate-structures` | `ChunkProviderServer.findClosestStructure` was a hardcoded `return null`, so nothing server-side could ever find a structure. The Crimson Eye always answered "no slipgate found nearby" in multiplayer, and slipgate arrivals could never aim at the gate on the far side |
 
 ### Diagnosed but NOT fixed
 
@@ -62,6 +63,12 @@ honest, but nothing there is running until this is fixed.
 
 ## Client, `client/patches/`
 
+| Patch | Adds |
+| --- | --- |
+| `0001-title-menu-mods-discord-and-scaling` | removes the Changelog button, adds the Mods and Discord buttons, centres the icon row |
+| `0002-controller-drives-look` | polls the gamepad and folds the right stick into the camera delta |
+| `0003-controls-opens-controller-screen` | the **Controller...** button on the Controls screen |
+
 `0001-title-menu-mods-discord-and-scaling` — removes the Changelog button, adds the Mods and
 Discord buttons, and centres the icon row under Options and Quit Game.
 
@@ -71,6 +78,27 @@ Changelog row brought the block down to 124px, which fits at 240 once it is clam
 bottom edge, so there is a single layout at every scale rather than a compact fallback.
 
 Client classes that are entirely ours live in `client/src` instead: `ModsScreen`.
+
+### Controller support
+
+Gamepad buttons drive the **existing key binds** rather than the movement code, so a controller
+behaves exactly like the keyboard everywhere — including inside addons, which never learn a
+controller was involved. Sticks are the only analogue path: the left one presses the movement
+binds past a deadzone, the right one feeds `MouseHelper` the same delta the mouse does.
+
+`ControllerInput` and `ControllerScreen` are entirely ours and live in `client/src`. Bindings
+persist to `controller.properties` in the game folder.
+
+> [!IMPORTANT]
+> The poll is hooked into `MouseHelper.moveMouse`, which `GameRenderer` calls every frame while
+> playing — **not** `Minecraft.runTick`. `Minecraft.java` is one of the classes that does not
+> survive a decompile/recompile round trip here (it loses `Minecraft$2`), so it is left alone.
+
+> [!WARNING]
+> Build `ControllerInput` against a real `lwjgl.jar`, never hand-written stubs. A wrong method
+> descriptor compiles cleanly and then throws `NoSuchMethodError` in front of players. The
+> `Controllers` / `Controller` API is stable across 2.9.x, so 2.9.3 from Maven Central is a valid
+> compile-time stand-in for the 2.9.4-nightly the launcher ships.
 
 > [!NOTE]
 > `ModsScreen` reads the `mods/` folder directly rather than asking `ModEngine.loadedMods()`.

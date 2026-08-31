@@ -1,0 +1,24 @@
+--- a/net/minecraft/server/world/ChunkProviderServer.java
++++ b/net/minecraft/server/world/ChunkProviderServer.java
+@@ -203,7 +203,19 @@
+       return "ServerChunkCache: " + this.chunkMap.size();
+    }
+ 
+-   public BlockPosition findClosestStructure(World world, Class<? extends Structure> target, int i2, int i3, int i4) {
+-      return null;
++   /**
++    * Locate the nearest generated structure, by asking the generator this provider wraps.
++    *
++    * This returned a hardcoded null, so nothing server-side could ever find a structure. In
++    * singleplayer the request goes through ChunkProvider, which delegates properly and finds
++    * one -- which is why the Crimson Eye worked there and always answered "no slipgate found
++    * nearby" in multiplayer, and why arrivals from a slipgate could never aim at the gate on
++    * the far side and fell back to a bare column instead.
++    *
++    * The generator is already held as serverChunkGenerator and ChunkLoader declares this method,
++    * so the delegation is all that was missing.
++    */
++   public BlockPosition findClosestStructure(World world, Class<? extends Structure> target, int x, int y, int z) {
++      return this.serverChunkGenerator == null ? null : this.serverChunkGenerator.findClosestStructure(world, target, x, y, z);
+    }
+ }

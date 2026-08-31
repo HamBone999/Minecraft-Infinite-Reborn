@@ -1,0 +1,29 @@
+--- a/net/minecraft/client/MouseHelper.java
++++ b/net/minecraft/client/MouseHelper.java
+@@ -6,6 +6,7 @@
+ import java.nio.Buffer;
+ import java.nio.IntBuffer;
+ import javax.imageio.ImageIO;
++import net.minecraft.client.input.ControllerInput;
+ import net.minecraft.util.logging.LoggingUtils;
+ import org.lwjgl.BufferUtils;
+ import org.lwjgl.LWJGLException;
+@@ -91,8 +92,18 @@
+       Mouse.setGrabbed(false);
+    }
+ 
++   /**
++    * Camera delta for this frame, from the mouse and the controller's right stick.
++    *
++    * GameRenderer calls this every frame while playing, which makes it the natural place to poll
++    * the pad -- and it avoids patching Minecraft.java, which does not survive a decompile and
++    * recompile on this project (it loses Minecraft$2).
++    */
+    public void moveMouse() {
+       this.deltaX = Mouse.getDX();
+       this.deltaY = Mouse.getDY();
++      ControllerInput.tick();
++      this.deltaX = this.deltaX + ControllerInput.consumeLookX();
++      this.deltaY = this.deltaY + ControllerInput.consumeLookY();
+    }
+ }

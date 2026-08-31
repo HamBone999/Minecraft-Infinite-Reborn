@@ -1,0 +1,27 @@
+--- a/net/minecraft/client/gui/screens/options/ControlsScreen.java
++++ b/net/minecraft/client/gui/screens/options/ControlsScreen.java
+@@ -43,11 +43,24 @@
+ 
+       super.initGui();
+       this.controls.enabled = false;
++      // Share the bottom row with Done. SettingsScreen.drawScreen only paints the last
++      // `optionButtons` entries, so that count has to grow with the button or Done stops drawing.
++      this.done.x = this.width / 2 - 155;
++      this.done.width = 150;
++      this.buttons.add(new Button(400, this.width / 2 + 5, this.height - 25, 150, 20, "options.controller"));
++      this.optionButtons = 7;
+       this.optionSlot = new ControlsScreen.ControlsSlot(this.mc, this.width, this.height, 32, this.height - 58 + 2, 25, 4);
+    }
+ 
+    @Override
+    protected void buttonClicked(Button button) {
++      // Intercept before the reset handling below, which treats any id >= 200 as a reset button
++      // and would index allKeys out of bounds with this one.
++      if (button.id == 400) {
++         this.mc.setScreen(new ControllerScreen(this.options, this));
++         return;
++      }
++
+       for (int index = 0; index < OptionsList.allKeys.length; index++) {
+          ((Button)this.buttons.get(index)).label = this.options.getKeyBindKey(index);
+       }
