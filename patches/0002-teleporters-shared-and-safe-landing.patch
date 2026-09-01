@@ -8,7 +8,7 @@
  import net.minecraft.localization.Translator;
  import net.minecraft.statistics.StatList;
  import net.minecraft.statistics.achievement.AchievementList;
-@@ -88,22 +89,35 @@
+@@ -88,22 +89,42 @@
        if (player.hook != null) {
           return false;
        } else {
@@ -27,17 +27,22 @@
 +               ? null
 +               : player.teleporterPositionsOut.get(player.dimension)[meta];
 +            if (target == null) {
-+               target = TeleporterRegistry.getOutput(player.dimension, meta);
++               target = TeleporterRegistry.getOutput(world, player.dimension, meta);
 +            }
 +         } else {
 +            target = player.teleporterPositionsIn.get(player.dimension) == null
 +               ? null
 +               : player.teleporterPositionsIn.get(player.dimension)[meta - 6];
 +            if (target == null) {
-+               target = TeleporterRegistry.getInput(player.dimension, meta - 6);
++               target = TeleporterRegistry.getInput(world, player.dimension, meta - 6);
 +            }
 +         }
 +
++         // The two ways this can fail are different problems and the player has to be able to
++         // tell them apart: nothing on the other end, versus something standing in the way of
++         // the arrival. The lang string for the first says "output is missing", which is a
++         // confusing thing to read when your output is right there and merely has a torch on it.
++         boolean blocked = false;
 +         if (target != null) {
 +            int tx = MathHelper.floor(target.x);
 +            int ty = MathHelper.floor(target.y);
@@ -46,6 +51,8 @@
 +            if (landing >= 0.0) {
 +               player.teleportAndNotify(tx + 0.5, landing, tz + 0.5);
                 state = true;
++            } else {
++               blocked = true;
              }
 -         } else if (player.teleporterPositionsIn.get(player.dimension)[meta - 6] != null) {
 -            player.setPosition(
@@ -57,7 +64,19 @@
           }
  
           if (state) {
-@@ -131,20 +145,59 @@
+@@ -124,27 +145,73 @@
+             player.addStat(StatList.teleporterUse, 1);
+             player.triggerAchievement(AchievementList.teleport);
+          } else {
+-            player.addChatMessage(Translator.getInstance().translateKey("tile.teleporter.occupied"));
++            player.addChatMessage(
++               blocked
++                  ? "That teleporter has no room to arrive -- clear the two blocks above it."
++                  : Translator.getInstance().translateKey("tile.teleporter.occupied")
++            );
+          }
+ 
+          return true;
        }
     }
  
@@ -85,7 +104,10 @@
 +    * room still works.
 +    */
 +   private static double standingRoomAbove(World world, int x, int y, int z) {
-+      if (world.getBlockId(x, y + 1, z) != 0 || world.getBlockId(x, y + 2, z) != 0) {
++      // isBlockFull, not "id != 0". A torch, a rail, a sign, snow, a plant -- any of those sat
++      // above a teleporter counted as blocking when this asked merely whether the space was
++      // non-air, so a perfectly usable teleporter refused to accept anyone.
++      if (world.isBlockFull(x, y + 1, z) || world.isBlockFull(x, y + 2, z)) {
 +         return -1.0;
 +      }
 +
@@ -98,7 +120,7 @@
        int meta = world.getBlockMetadata(xCoord, yCoord, zCoord);
 +      if (!world.isOnline && player != null) {
 +         TeleporterRegistry.clearAt(
-+            player.dimension, meta < 6 ? meta : meta - 6, meta < 6, new Position(xCoord, yCoord, zCoord)
++            world, player.dimension, meta < 6 ? meta : meta - 6, meta < 6, new Position(xCoord, yCoord, zCoord)
 +         );
 +      }
 +
@@ -121,7 +143,7 @@
              }
           }
        }
-@@ -158,10 +211,21 @@
+@@ -158,10 +225,21 @@
           stack = player.inventory.getOffHandItem();
        }
  
@@ -140,9 +162,9 @@
 +      // Also publish it world-wide so everyone else can use this gate.
 +      if (!world.isOnline) {
 +         if (stack.itemDmg < 6) {
-+            TeleporterRegistry.setInput(player.dimension, stack.itemDmg, placed);
++            TeleporterRegistry.setInput(world, player.dimension, stack.itemDmg, placed);
 +         } else {
-+            TeleporterRegistry.setOutput(player.dimension, stack.itemDmg - 6, placed);
++            TeleporterRegistry.setOutput(world, player.dimension, stack.itemDmg - 6, placed);
 +         }
        }
     }

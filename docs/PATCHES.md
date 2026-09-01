@@ -123,6 +123,26 @@ footing rather than assuming any given one does.
 
 ### Teleporters
 
+> [!IMPORTANT]
+> `Player.teleporterPositionsIn/Out` are **never written to NBT**. The stock per-player endpoints
+> do not survive quitting, so `TeleporterRegistry` is the only durable record a teleporter has.
+> Anything that stops the registry persisting takes every teleporter in the world with it.
+
+The registry file is asked for through the world's save handler rather than hardcoded. It used
+to be `world/teleporters.tsv`, which is the world folder only on a dedicated server -- a
+singleplayer install keeps its worlds under `saves/`, so the file was never found and never
+written. Combined with the NBT gap above, every singleplayer teleporter forgot its destination
+on quit and then reported its output missing, which was true. A legacy file at the old path is
+read once if the new one is absent, so servers written by an earlier build keep their endpoints.
+
+The arrival check tests `isBlockFull`, not `id != 0`. A torch, rail, sign, snow layer or plant
+above a teleporter counted as blocking when it merely asked whether the space was non-air.
+
+The two failure modes are reported separately. `tile.teleporter.occupied` reads "Teleporter
+output is missing!", which is accurate when there is no endpoint and badly misleading when the
+endpoint is right there with something standing on it.
+
+
 `TeleporterRegistry` is a new class of ours, and `Teleporter` -- a **shared** game class -- calls
 it. Shared classes are patched into both jars, so a new class they depend on has to be shipped
 in both too. It was only ever added to the server jar, so in a singleplayer world, where the
