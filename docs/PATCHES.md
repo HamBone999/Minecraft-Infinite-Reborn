@@ -19,7 +19,7 @@ same shape on the next bump: re-pin `base/`, re-run setup, and hand-rebase whate
 | Patch | Fixes |
 | --- | --- |
 | `0001-register-extra-commands-in-help` | custom commands were missing from `/help` |
-| `0002-teleporters-shared-and-safe-landing` | teleporters only worked for whoever placed them; arrivals landed inside rock |
+| `0002-teleporters-shared-and-safe-landing` | teleporters only worked for whoever placed them; arrivals landed inside rock, or on the roof of the building the teleporter was in |
 | `0003-portal-leads-to-the-void-not-hell` | the void portal frame sent you to the Crimson |
 | `0004-leaving-the-world-top-and-bottom-and-fire` | makes `Entity.onFellOutOfWorld` a hook; also **upstream #33** -- the client blanked `Entity.fire` every tick, and `EntityRenderer` draws flames off that field, so nothing ever looked alight in multiplayer |
 | `0005-pets-stay-sitting-when-told-to` | **upstream #5 / #27** -- the sit action bailed out while the owner was fighting nearby, which cleared the mob's sitting flag while the order stayed set, so pets stood up and teleported mid-fight |
@@ -120,6 +120,27 @@ is bottomless and there is nothing to stand on, so arrivals go to the **outer ri
 `Slipgate.generate` clears only from y8 up and floors with scattered netherrack. That ring is
 generated with a coin flip per column, so the search takes the nearest column that actually has
 footing rather than assuming any given one does.
+
+### Teleporters
+
+`TeleporterRegistry` is a new class of ours, and `Teleporter` -- a **shared** game class -- calls
+it. Shared classes are patched into both jars, so a new class they depend on has to be shipped
+in both too. It was only ever added to the server jar, so in a singleplayer world, where the
+client runs the world itself, placing or breaking a teleporter threw
+`NoClassDefFoundError: TeleporterRegistry` straight out of the game loop. The crash landed
+between placing the block and consuming the item, which is where the duplicate teleporters came
+from.
+
+> [!IMPORTANT]
+> Anything in `sources/` that a **shared** class references must be overlaid into the client jar
+> as well as the server jar. The server build does this automatically; the client build is
+> assembled separately and does not.
+
+The arrival height search rises only through air and stops at the first solid block. It used to
+skip over solids and take the first gap within eight blocks, which put an arriving player
+through the ceiling and onto the roof of their own base, and it fell back to `y + 3` when it
+found nothing -- a guess that can be inside a wall. It now refuses instead, and the caller
+reports the teleporter as occupied.
 
 ### Diagnosed but NOT fixed
 

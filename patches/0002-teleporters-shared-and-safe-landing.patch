@@ -8,7 +8,7 @@
  import net.minecraft.localization.Translator;
  import net.minecraft.statistics.StatList;
  import net.minecraft.statistics.achievement.AchievementList;
-@@ -88,21 +89,31 @@
+@@ -88,22 +89,35 @@
        if (player.hook != null) {
           return false;
        } else {
@@ -23,7 +23,6 @@
 -                  MathHelper.floor(player.teleporterPositionsOut.get(player.dimension)[meta].y) + 3.0,
 -                  MathHelper.floor(player.teleporterPositionsOut.get(player.dimension)[meta].z) + 0.5
 -               );
--               state = true;
 +            target = player.teleporterPositionsOut.get(player.dimension) == null
 +               ? null
 +               : player.teleporterPositionsOut.get(player.dimension)[meta];
@@ -36,6 +35,17 @@
 +               : player.teleporterPositionsIn.get(player.dimension)[meta - 6];
 +            if (target == null) {
 +               target = TeleporterRegistry.getInput(player.dimension, meta - 6);
++            }
++         }
++
++         if (target != null) {
++            int tx = MathHelper.floor(target.x);
++            int ty = MathHelper.floor(target.y);
++            int tz = MathHelper.floor(target.z);
++            double landing = standingRoomAbove(world, tx, ty, tz);
++            if (landing >= 0.0) {
++               player.teleportAndNotify(tx + 0.5, landing, tz + 0.5);
+                state = true;
              }
 -         } else if (player.teleporterPositionsIn.get(player.dimension)[meta - 6] != null) {
 -            player.setPosition(
@@ -43,17 +53,11 @@
 -               MathHelper.floor(player.teleporterPositionsIn.get(player.dimension)[meta - 6].y) + 3.0,
 -               MathHelper.floor(player.teleporterPositionsIn.get(player.dimension)[meta - 6].z) + 0.5
 -            );
-+         }
-+
-+         if (target != null) {
-+            int tx = MathHelper.floor(target.x);
-+            int ty = MathHelper.floor(target.y);
-+            int tz = MathHelper.floor(target.z);
-+            player.teleportAndNotify(tx + 0.5, standingRoomAbove(world, tx, ty, tz), tz + 0.5);
-             state = true;
+-            state = true;
           }
  
-@@ -131,20 +142,51 @@
+          if (state) {
+@@ -131,20 +145,51 @@
        }
     }
  
@@ -109,7 +113,7 @@
              }
           }
        }
-@@ -158,10 +200,21 @@
+@@ -158,10 +203,21 @@
           stack = player.inventory.getOffHandItem();
        }
  
