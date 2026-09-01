@@ -57,7 +57,7 @@
           }
  
           if (state) {
-@@ -131,20 +145,51 @@
+@@ -131,20 +145,59 @@
        }
     }
  
@@ -72,16 +72,24 @@
 +    *
 +    * Scan up from the pad instead and take the first gap tall enough to stand in.
 +    */
++   /**
++    * Where to stand when arriving on top of a teleporter, or -1 if the space is not clear.
++    *
++    * Just the column directly above the block -- no searching. The old version scanned eight
++    * blocks upward for any gap it could find, so a teleporter with anything above it put the
++    * arriving player through the ceiling and onto the roof of their own base, and when it found
++    * nothing it fell back to y+3, which can be inside a wall. Anything cleverer than "is the
++    * space above clear" ends up moving people somewhere they did not ask to go.
++    *
++    * Only the two blocks a player actually occupies have to be free, so an ordinary two-high
++    * room still works.
++    */
 +   private static double standingRoomAbove(World world, int x, int y, int z) {
-+      int ceiling = world.getWorldHeight() - 2;
-+
-+      for (int candidate = y + 1; candidate < y + 8 && candidate < ceiling; candidate++) {
-+         if (world.getBlockId(x, candidate, z) == 0 && world.getBlockId(x, candidate + 1, z) == 0) {
-+            return candidate;
-+         }
++      if (world.getBlockId(x, y + 1, z) != 0 || world.getBlockId(x, y + 2, z) != 0) {
++         return -1.0;
 +      }
 +
-+      return y + 3.0;
++      return y + 1;
 +   }
 +
     @Override
@@ -113,7 +121,7 @@
              }
           }
        }
-@@ -158,10 +203,21 @@
+@@ -158,10 +211,21 @@
           stack = player.inventory.getOffHandItem();
        }
  

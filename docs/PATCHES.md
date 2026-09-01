@@ -136,11 +136,19 @@ from.
 > as well as the server jar. The server build does this automatically; the client build is
 > assembled separately and does not.
 
-The arrival height search rises only through air and stops at the first solid block. It used to
-skip over solids and take the first gap within eight blocks, which put an arriving player
-through the ceiling and onto the roof of their own base, and it fell back to `y + 3` when it
-found nothing -- a guess that can be inside a wall. It now refuses instead, and the caller
-reports the teleporter as occupied.
+The arrival check is now just the column directly above the block: the two blocks a player
+occupies have to be clear, or the teleporter reports itself occupied. It used to scan eight
+blocks upward for any gap it could find, which put an arriving player through the ceiling and
+onto the roof of their own base, and it fell back to `y + 3` when it found nothing -- a guess
+that can be inside a wall. Only two blocks are required rather than three so an ordinary
+two-high room still works.
+
+> [!WARNING]
+> 1.0-200926 shipped the caller for this without the function itself. A multi-part edit had its
+> first hunk fail, which aborted the script before the second, and the rebuilt jar was verified
+> for the version string rather than for the behaviour. The caller tested for a refusal the
+> function could never return, so the roof bug was still live in a release whose notes said it
+> was fixed. Verify the logic, not the presence of a build.
 
 ### Diagnosed but NOT fixed
 
