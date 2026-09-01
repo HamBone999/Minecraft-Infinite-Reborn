@@ -29,7 +29,7 @@ while IFS= read -r f; do
       # to a bare filename slug once silently replaced patches that carried work nothing else
       # had a copy of, and the set stopped reproducing the shipped jar. Names are matched by
       # the file the patch touches, which is the only thing that survives a rewrite.
-      keep=$(grep -l "^+++ b/$rel$" patches/*.patch 2>/dev/null | head -1)
+      keep=$(grep -l "^+++ b/$rel$" patches/*.patch 2>/dev/null | head -1 || true)
       if [ -n "$keep" ]; then
          out="$tmp/$(basename "$keep")"
       else

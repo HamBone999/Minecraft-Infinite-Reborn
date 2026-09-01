@@ -21,7 +21,7 @@ same shape on the next bump: re-pin `base/`, re-run setup, and hand-rebase whate
 | `0001-register-extra-commands-in-help` | custom commands were missing from `/help` |
 | `0002-teleporters-shared-and-safe-landing` | teleporters only worked for whoever placed them; arrivals landed inside rock |
 | `0003-portal-leads-to-the-void-not-hell` | the void portal frame sent you to the Crimson |
-| `0004-void-fall-and-clients-see-fire` | makes `Entity.onFellOutOfWorld` a hook; also **upstream #33** -- the client blanked `Entity.fire` every tick, and `EntityRenderer` draws flames off that field, so nothing ever looked alight in multiplayer |
+| `0004-leaving-the-world-top-and-bottom-and-fire` | makes `Entity.onFellOutOfWorld` a hook; also **upstream #33** -- the client blanked `Entity.fire` every tick, and `EntityRenderer` draws flames off that field, so nothing ever looked alight in multiplayer |
 | `0005-pets-stay-sitting-when-told-to` | **upstream #5 / #27** -- the sit action bailed out while the owner was fighting nearby, which cleared the mob's sitting flag while the order stayed set, so pets stood up and teleported mid-fight |
 | `0006-fox-held-item-is-visible` | **upstream #18** -- `Fox.heldItem` was server-only, so `FoxRenderer.renderEquippedItems` always drew an empty-handed fox |
 | `0007-pet-interaction-consumes-the-click` | **upstream #26** -- the pet interaction toggled sitting then reported the click unhandled, so the caller also ate the food you were holding |
@@ -29,7 +29,8 @@ same shape on the next bump: re-pin `base/`, re-run setup, and hand-rebase whate
 | `0009-dimension-requests-velocity-hook-and-god-mode` | dreamcatcher/void-fall routing, crawl persistence, the velocity hook `Explosion` needs, and the `godMode` check in `damageEntity` that `/god` sets |
 | `0010-explosion-knockback-reaches-the-player` | **upstream #21** -- knockback was applied server-side and never transmitted; ordinary explosions hid it because the damage still landed, the wind creeper deals none |
 | `0011-random-block-ticks-must-not-generate-chunks` | random ticks were driving terrain generation, causing `Can't keep up` |
-| `0012-slipgate-return-gate-commands-and-wand` | arrivals landed on the Crimson's roof instead of at the gate; also builds the return gate on arrival, and lets the selection wand consume clicks |
+| `0012-slipgate-arrival-commands-and-wand` | slipgate arrivals: the entry position is captured before the player entity is replaced, and arrivals land in the gate itself -- the shaft in the Crimson, the surrounding chamber everywhere else. Also lets the selection wand consume clicks |
+| `0016-chunk-relocation-actually-relocates` | a mislocated chunk could never be repaired, which froze any player who walked into it |
 | `0013-connection-throttle-window-and-no-re-arm` | random `End of stream` rejections |
 | `0014-teleports-velocity-and-chunk-queue` | teleports tripped the movement check; chunks arrived one per movement packet |
 | `0015-server-can-locate-structures` | `ChunkProviderServer.findClosestStructure` was a hardcoded `return null`, so nothing server-side could ever find a structure. The Crimson Eye always answered "no slipgate found nearby" in multiplayer, and slipgate arrivals could never aim at the gate on the far side |
@@ -94,6 +95,32 @@ belongs in its own release rather than riding along with thirty commands.
 
 `/difficulty` is absent for a simpler reason: this build has no difficulty setting to change.
 
+## Slipgates
+
+A slipgate is **carved terrain, not a structure**: `Slipgate.generate` only clears blocks. In
+the overworld it cuts through the floor, so you fall out of the bottom of the world and
+`onFellOutOfWorld` sends you to the Crimson. In the Crimson it cuts through the roof instead,
+which is why `onNearWorldTop` exists -- the same trick upside down.
+
+Both now hand over **inside the shaft** rather than after a long fall or climb, gated on the
+column actually being open at the carve height. Without that gate the bottom trigger would fire
+for anyone standing in a mine at bedrock level; a sweep of 1089 overworld columns and 625 roof
+columns near spawn produced zero false positives.
+
+> [!IMPORTANT]
+> `recreatePlayerEntity` builds a **new** `EntityPlayerMP` in the destination world and
+> `setPosAndRot`s it to that dimension's spawn. Anything that needs to know where the player
+> *came from* must capture it before that call. Reading `posX/posZ` afterwards made the slipgate
+> lookup search around the destination's spawn instead of the gate that was walked into, so it
+> answered "no slipgate nearby" for every gate in the world.
+
+Arrival placement differs by dimension because the geometry does. The Crimson's shaft has a
+floor -- the roof slab it was cut through -- so you land on it. Everywhere else the inner shaft
+is bottomless and there is nothing to stand on, so arrivals go to the **outer ring**, which
+`Slipgate.generate` clears only from y8 up and floors with scattered netherrack. That ring is
+generated with a coin flip per column, so the search takes the nearest column that actually has
+footing rather than assuming any given one does.
+
 ### Diagnosed but NOT fixed
 
 **Upstream #30, item sorting.** `ChestScreen`'s sort button calls `setSlotContents` and sends
@@ -128,9 +155,20 @@ honest, but nothing there is running until this is fixed.
 | `0001-title-menu-mods-discord-and-scaling` | removes the Changelog button, adds the Mods and Discord buttons, centres the icon row |
 | `0002-controller-drives-look` | polls the gamepad and folds the right stick into the camera delta |
 | `0003-controls-opens-controller-screen` | the **Controller...** button on the Controls screen |
+| `0004-rebuild-chunk-renderers-on-dimension-change` | the sky, fog and particles of the dimension you left persisted into the new one |
+| `0005-world-height-before-the-renderer-is-built` | terrain above the client's *default* world height was solid but never drawn |
 
 `0001-title-menu-mods-discord-and-scaling` — removes the Changelog button, adds the Mods and
 Discord buttons, and centres the icon row under Options and Quit Game.
+
+> [!IMPORTANT]
+> `setMaxSections` must be applied to the world **before** `Minecraft.changeWorld`, because
+> that call ends in `worldRenderer.changeWorld` -> `reloadChunks`, which sizes the chunk
+> renderer array with `chunksHeight = world.getMaxSections()`. It used to be set on the line
+> after, so the array was built from the client's own default (`WorldSettings.heightInt`, 12 or
+> 16) rather than the server's. On a taller server every section above that default had no
+> renderer at all: the blocks arrived, collided and pick-blocked normally, and were simply never
+> drawn, leaving a hard horizontal cut with solid invisible terrain above it.
 
 `ScreenRescaler` raises the scale while `height / (scale + 1)` stays at or above 240, so the
 GUI can be as short as 240 units — which is what AUTO picks on a large display. Dropping the

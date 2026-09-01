@@ -34,7 +34,7 @@
     public static Logger logger = Logger.getLogger("Minecraft");
     public NetworkManager netManager;
     public boolean connectionClosed = false;
-@@ -88,6 +96,31 @@
+@@ -88,6 +96,43 @@
     }
  
     public void handlePackets() {
@@ -51,12 +51,24 @@
 +         this.playerEntity.pendingHasDestination = false;
 +
 +         if (target != this.playerEntity.dimension) {
++            // Where the player actually was, captured BEFORE the entity is replaced.
++            //
++            // recreatePlayerEntity builds a brand new EntityPlayerMP in the destination world
++            // and setPosAndRots it to that dimension's spawn, so the moment it returns, posX/posZ
++            // no longer say anything about where the player entered. Reading them afterwards
++            // meant the slipgate lookup always searched around the destination's spawn instead
++            // of around the gate that was walked into -- which is why it always answered "no
++            // slipgate nearby" no matter which gate was used.
++            int fromX = MathHelper.floor_double(this.playerEntity.posX);
++            int fromY = MathHelper.floor_double(this.playerEntity.posY);
++            int fromZ = MathHelper.floor_double(this.playerEntity.posZ);
++
 +            this.playerEntity = this.mcServer.configManager.recreatePlayerEntity(this.playerEntity, target);
 +            this.playerEntity.portalCooldown = 100;
 +            if (known) {
 +               this.arriveAt(this.playerEntity, dx, dy, dz);
 +            } else {
-+               this.placeInDestination(this.playerEntity);
++               this.placeInDestination(this.playerEntity, fromX, fromY, fromZ);
 +            }
 +         } else if (known) {
 +            this.arriveAt(this.playerEntity, dx, dy, dz);
@@ -66,7 +78,7 @@
        this.netManager.update();
        if (this.lastHealth - this.currentHealth > 20) {
           this.currentHealth = this.lastHealth;
-@@ -97,11 +130,142 @@
+@@ -97,11 +142,231 @@
        }
     }
  
@@ -81,16 +93,37 @@
 +    * highest solid block, and hell's roof is a solid slab across the top of the world, so it
 +    * always answers "the roof" and drops the player on top of everything.
 +    */
-+   private void placeInDestination(EntityPlayerMP player) {
++   private void placeInDestination(EntityPlayerMP player, int entryX, int entryY, int entryZ) {
 +      WorldServer world = this.mcServer.getWorldManager(player.dimension);
-+      int x = MathHelper.floor_double(player.posX);
-+      int z = MathHelper.floor_double(player.posZ);
++      int x = entryX;
++      int z = entryZ;
++
++      // Remembered before anything overwrites them. The arrival used to log only where the
++      // player ended up, which is the least useful number when the placement went somewhere
++      // unexpected: a fallback to world spawn looks identical to a slipgate that was found.
++      int fromX = x;
++      int fromZ = z;
++      boolean usedSpawn = false;
 +
 +      BlockPosition gate = null;
++      String gateFailure = null;
 +      try {
-+         gate = world.findClosestStructure(Slipgate.class, x, MathHelper.floor_double(player.posY), z);
-+      } catch (Throwable ignored) {
++         gate = world.findClosestStructure(Slipgate.class, x, entryY, z);
++      } catch (Throwable t) {
++         // Never swallow this. The lookup walks worldgen structures for a dimension that may
++         // not have generated yet, so it is exactly the call most likely to throw -- and a
++         // silent catch here turns "the lookup crashed" into "there was no gate", which are
++         // very different problems and look identical in the log.
++         gateFailure = t.getClass().getName() + ": " + t.getMessage();
++         logger.log(java.util.logging.Level.WARNING, "slipgate lookup failed in dimension "
++            + player.dimension + " at " + x + "," + z, t);
 +      }
++
++      logger.info("[slipgate] dim=" + player.dimension + " from=" + x + "," + z
++         + " chunk=" + (x >> 4) + "," + (z >> 4)
++         + " -> " + (gate != null ? "found at " + gate.x + "," + gate.z
++                                  : gateFailure != null ? "LOOKUP THREW (" + gateFailure + ")"
++                                                        : "no slipgate within 10 chunks"));
 +
 +      if (gate != null) {
 +         x = gate.x;
@@ -98,8 +131,40 @@
 +      }
 +
 +      world.chunkProviderServer.loadChunk(x >> 4, z >> 4);
-+      int y = findFootingBelowRoof(world, x, z);
++
++      // Arriving at a slipgate should put you IN it, standing in the shaft, so the way back is
++      // the thing you are looking at rather than something to go hunting for.
++      //
++      // Only in the Crimson. Its slipgate is a shaft through the roof, so the shaft floor is a
++      // place to stand. The overworld's is a pit carved through the bedrock floor, and dropping
++      // someone into that would put them straight back through the bottom of the world and into
++      // the Crimson again -- an arrival loop. Overworld arrivals keep using ground level.
++      boolean atShaft = false;
++      boolean atPocket = false;
++      int y = -1;
++      if (gate != null && player.dimension == 1) {
++         y = findSlipgateShaftFooting(world, x, z);
++         atShaft = y > 0;
++      } else if (gate != null) {
++         // Everywhere except the Crimson, a slipgate is a pit carved through the floor with
++         // nothing under it -- you cannot be placed IN one, you would drop straight back out of
++         // the world. But the outer ring is standing room: Slipgate.generate clears y8-16 there
++         // and leaves a partial netherrack floor below, so that ring is where an arrival belongs.
++         int[] spot = findSlipgatePocketFooting(world, x, z);
++         if (spot != null) {
++            x = spot[0];
++            y = spot[1];
++            z = spot[2];
++            atPocket = true;
++         }
++      }
++
 +      if (y < 0) {
++         y = findFootingBelowRoof(world, x, z);
++      }
++
++      if (y < 0) {
++         usedSpawn = true;
 +         Position spawn = world.getSpawnPoint();
 +         x = spawn.x;
 +         z = spawn.z;
@@ -115,61 +180,25 @@
 +      player.setPosition(x + 0.5, y, z + 0.5);
 +      this.teleportTo(x + 0.5, y, z + 0.5, player.yaw, player.pitch);
 +
-+      boolean built = false;
-+      if (gate == null) {
-+         built = this.buildReturnGate(world, x, y, z);
-+      }
-+
 +      // The arriving entity is a fresh object, so give it its own grace period rather than
 +      // trusting the cooldown from the one that walked into the gate.
 +      player.portalCooldown = PORTAL_GRACE_TICKS;
 +
 +      logger.info(
 +         player.username + " arrived in dimension " + player.dimension + " at " + x + "," + y + "," + z
-+            + (gate != null ? " (slipgate)" : built ? " (built a return gate)" : " (same column, no gate)")
++            + " [entered from " + fromX + "," + fromZ + "]"
++            + (atShaft
++               ? " (in the slipgate shaft)"
++               : atPocket
++               ? " (in the slipgate pocket)"
++               : gate != null
++                  ? " (slipgate found, but no shaft here -- ground level)"
++                  : usedSpawn
++                     ? " (no slipgate within 160 blocks AND no footing -- fell back to this dimension's spawn)"
++                     : " (no slipgate within 160 blocks -- ground level under the entry point)")
 +      );
 +   }
 +
-+   /**
-+    * Put a way home next to someone who arrived where there was no gate.
-+    *
-+    * Slipgates are worldgen, so a dimension can easily have none within reach -- and nothing else
-+    * carries a player out of the Crimson, which left arrivals stranded until they died. Portal
-+    * blocks already know where they lead (Portal.destinationFrom sends anything that is not the
-+    * overworld home), so placing one is all that is needed.
-+    *
-+    * Placed beside the player rather than underfoot: it is a way back, not a trapdoor to fall
-+    * through the instant you land.
-+    */
-+   private boolean buildReturnGate(WorldServer world, int x, int y, int z) {
-+      int[][] offsets = new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
-+
-+      for (int i = 0; i < offsets.length; i++) {
-+         int gx = x + offsets[i][0];
-+         int gz = z + offsets[i][1];
-+         if (world.getBlockId(gx, y, gz) != 0 || world.getBlockId(gx, y + 1, gz) != 0) {
-+            continue;
-+         }
-+
-+         // Portal.onNeighborChange clears a portal block whenever anything beside it changes,
-+         // which is what stops a broken frame leaving one floating. Suppress that while the
-+         // gate and its footing are being placed, or it deletes itself as it is built.
-+         boolean wasBreaking = Portal.breakPortal;
-+         Portal.breakPortal = false;
-+         try {
-+            if (!world.isBlockFull(gx, y - 1, gz)) {
-+               world.setBlockWithNotify(gx, y - 1, gz, BlockList.netherrack.id);
-+            }
-+            world.setBlockWithNotify(gx, y, gz, BlockList.endPortal.id);
-+         } finally {
-+            Portal.breakPortal = wasBreaking;
-+         }
-+
-+         return world.getBlockId(gx, y, gz) == BlockList.endPortal.id;
-+      }
-+
-+      return false;
-+   }
 +
 +   /** Land at a point the caller already knows is good, loading its chunk first. */
 +   private void arriveAt(EntityPlayerMP player, double x, double y, double z) {
@@ -179,6 +208,78 @@
 +      player.motionY = 0.0;
 +      player.setPosition(x, y, z);
 +      this.teleportTo(x, y, z, player.yaw, player.pitch);
++   }
++
++   /**
++    * Standing room in the ring around a slipgate, for the dimensions where the gate is a pit.
++    *
++    * Slipgate.generate carves two radii. The inner one (within 6 blocks) is cleared all the way
++    * through the floor -- that is the hole you fall down, and there is nothing to stand on in
++    * it. The outer one (within 12) only clears y8-16 and leaves a scatter of netherrack below,
++    * so the ring around the hole is a room with a floor.
++    *
++    * Searching that ring and preferring the column nearest the centre puts an arrival beside
++    * the gate, looking at it, rather than in it.
++    *
++    * Returns {x, y, z}, or null if the ring has no footing -- the floor is generated with a coin
++    * flip per column, so some of it is holes.
++    */
++   private int[] findSlipgatePocketFooting(WorldServer world, int centreX, int centreZ) {
++      int[] best = null;
++      int bestDist = Integer.MAX_VALUE;
++
++      for (int dx = -11; dx <= 11; dx++) {
++         for (int dz = -11; dz <= 11; dz++) {
++            int dist = dx * dx + dz * dz;
++            if (dist <= Slipgate.radiusInnerSquared || dist >= Slipgate.radiusSquared || dist >= bestDist) {
++               continue;
++            }
++
++            int x = centreX + dx;
++            int z = centreZ + dz;
++            if (!world.blockExists(x, 1, z)) {
++               continue;
++            }
++
++            for (int y = 15; y >= 1; y--) {
++               if (world.getBlockId(x, y, z) == 0
++                  && world.getBlockId(x, y + 1, z) == 0
++                  && world.getBlockId(x, y - 1, z) != 0) {
++                  best = new int[] { x, y, z };
++                  bestDist = dist;
++                  break;
++               }
++            }
++         }
++      }
++
++      return best;
++   }
++
++   /**
++    * Standing room on the floor of a slipgate's shaft, in the roof of the Crimson.
++    *
++    * Slipgate.generate carves the shaft out of the top of the world -- the wide part from
++    * worldHeight-16 upward and the narrow column right through to worldHeight-1 -- so the shaft
++    * has a floor made of the roof itself. Scanning down through the roof band and keeping the
++    * LOWEST air block that still has something solid under it lands on that floor: the top of
++    * the shaft is open sky, and only its base has footing.
++    *
++    * Returns -1 for a column with no shaft, which is every column except a slipgate.
++    */
++   private int findSlipgateShaftFooting(WorldServer world, int x, int z) {
++      int floor = -1;
++      int bottom = world.getWorldHeight() - 32;
++
++      for (int y = world.getWorldHeight() - 2; y > bottom && y > 1; y--) {
++         if (world.getBlockId(x, y, z) == 0
++            && world.getBlockId(x, y + 1, z) == 0
++            && world.getBlockId(x, y - 1, z) != 0) {
++            floor = y;
++         }
++      }
++
++      return floor;
 +   }
 +
 +   /** Lowest y with solid ground and two air blocks above, searching down from below the roof. */
@@ -209,7 +310,7 @@
        this.mcServer.configManager.playerLoggedOut(this.playerEntity);
        this.connectionClosed = true;
     }
-@@ -315,6 +479,17 @@
+@@ -315,6 +580,17 @@
     @Override
     public void handleBlockDig(DigPacket packet14BlockDig1) {
        WorldServer worldServer2 = this.mcServer.getWorldManager(this.playerEntity.dimension);
@@ -227,7 +328,7 @@
        if (packet14BlockDig1.status == 4) {
           this.playerEntity.dropCurrentItem(1);
        } else if (packet14BlockDig1.status == 5) {
-@@ -384,6 +559,16 @@
+@@ -384,6 +660,16 @@
     @Override
     public void handlePlace(PlacePacket packet15Place1) {
        WorldServer worldServer2 = this.mcServer.getWorldManager(this.playerEntity.dimension);
@@ -244,7 +345,7 @@
        ItemStack itemStack3 = this.playerEntity.inventory.getCurrentItem();
        if (this.playerEntity.inventory.canUseItem()) {
           itemStack3 = this.playerEntity.inventory.getOffHandItem();
-@@ -471,6 +656,7 @@
+@@ -471,6 +757,7 @@
     public void handleErrorMessage(String string1, Object... format) {
        logger.info(this.playerEntity.username + " lost connection: " + Translator.getInstance().translateKeyFormat(string1, format));
        this.mcServer.configManager.sendPacketToAll(new ChatPacket("§e" + this.playerEntity.username + " left the game."));
@@ -252,7 +353,7 @@
        this.mcServer.configManager.playerLoggedOut(this.playerEntity);
        this.connectionClosed = true;
     }
-@@ -533,6 +719,12 @@
+@@ -533,6 +820,12 @@
     }
  
     private void handleSlashCommand(String string1) {

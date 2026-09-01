@@ -79,7 +79,9 @@ public final class Cmd {
     * Six coordinates starting at {@code from}, returned sorted as
     * {@code {minX, minY, minZ, maxX, maxY, maxZ}} so callers never have to care which corner
     * was typed first. Y is clamped to the world rather than rejected, because asking for
-    * "everything down to bedrock" by typing 0 and 127 is the normal way to use these.
+    * "everything from bedrock upward" by typing 0 and the world height is the normal way to
+    * use these. The ceiling comes from the world rather than a constant: dimensions here are
+    * 320 blocks tall, not 128, and a hardcoded clamp silently ignored everything above y127.
     */
    public static int[] region(EntityPlayerMP p, String[] a, int from) {
       if (a.length < from + 6) {
@@ -92,13 +94,22 @@ public final class Cmd {
          return null;
       }
 
-      return box(x1, y1, z1, x2, y2, z2);
+      return box(x1, y1, z1, x2, y2, z2, p.world.getWorldHeight());
    }
 
+   /** Sorted corners, with Y clamped into the world. */
+   public static int[] box(int x1, int y1, int z1, int x2, int y2, int z2, int worldHeight) {
+      return new int[] {
+         Math.min(x1, x2), Math.max(0, Math.min(y1, y2)), Math.min(z1, z2),
+         Math.max(x1, x2), Math.min(worldHeight - 1, Math.max(y1, y2)), Math.max(z1, z2)
+      };
+   }
+
+   /** Sorted corners with no upper clamp, for coordinates already known to be in the world. */
    public static int[] box(int x1, int y1, int z1, int x2, int y2, int z2) {
       return new int[] {
          Math.min(x1, x2), Math.max(0, Math.min(y1, y2)), Math.min(z1, z2),
-         Math.max(x1, x2), Math.min(127, Math.max(y1, y2)), Math.max(z1, z2)
+         Math.max(x1, x2), Math.max(y1, y2), Math.max(z1, z2)
       };
    }
 

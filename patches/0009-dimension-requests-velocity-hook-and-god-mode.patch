@@ -32,7 +32,7 @@
     }
  
     @Override
-@@ -885,7 +892,134 @@
+@@ -885,7 +892,211 @@
     public void onFoodEaten() {
     }
  
@@ -107,6 +107,83 @@
 +    *
 +    * Everywhere else the void kills, as it did before any of this.
 +    */
++   /**
++    * Dropping down a slipgate shaft in the overworld is the way to the Crimson.
++    *
++    * The trip already happened by falling out of the world, but only once you had fallen past
++    * y=-64 -- a long drop through empty blackness after the shaft ran out. This fires while you
++    * are still inside the shaft, so the gate takes you as you go down it.
++    *
++    * The column check is what makes that safe. Slipgate.generate clears the inner column
++    * straight through the floor, so a slipgate is the one place in the overworld where y=0 is
++    * open; everywhere else it is bedrock. Without the check this would fire for anyone standing
++    * in a mine at bedrock level.
++    */
++   @Override
++   protected void onNearWorldBottom() {
++      if (this.world.isOnline || this.pendingDimension >= 0 || this.dimension != 0) {
++         return;
++      }
++
++      // An arrival is placed with a grace period; without honouring it here a player set down
++      // near the world edge could trip the same trigger again on the very next tick.
++      if (this.portalCooldown > 0) {
++         return;
++      }
++
++      int x = MathHelper.floor_double(this.posX);
++      int z = MathHelper.floor_double(this.posZ);
++      if (this.world.getBlockId(x, 0, z) != 0) {
++         return;
++      }
++
++      this.pendingDimension = 1;
++      this.portalCooldown = 100;
++      this.fallDistance = 0.0F;
++      this.motionY = 0.0;
++   }
++
++   /**
++    * Rising into a slipgate shaft in the roof of the Crimson is the way home.
++    *
++    * The same trick as falling out of the overworld, upside down. An overworld slipgate is
++    * carved through the floor, so walking into one drops you past y=-64 and onFellOutOfWorld
++    * sends you to the Crimson. A Crimson slipgate is carved through the roof instead, so rising
++    * into one sends you back.
++    *
++    * It fires a couple of blocks below the top of the world rather than above it, so you leave
++    * as you rise into the shaft instead of having to clear the roof first.
++    *
++    * The column check is what keeps that honest. Slipgate.generate clears the shaft from
++    * worldHeight-16 upward and the roof is solid at that level everywhere else, so a single
++    * lookup separates "in a shaft" from "standing on the roof" -- without it, walking around on
++    * the roof would send you home from anywhere.
++    */
++   @Override
++   protected void onNearWorldTop() {
++      if (this.world.isOnline || this.pendingDimension >= 0 || this.dimension != 1) {
++         return;
++      }
++
++      // An arrival is placed with a grace period; without honouring it here a player set down
++      // near the world edge could trip the same trigger again on the very next tick.
++      if (this.portalCooldown > 0) {
++         return;
++      }
++
++      int x = MathHelper.floor_double(this.posX);
++      int z = MathHelper.floor_double(this.posZ);
++      if (this.world.getBlockId(x, this.world.getWorldHeight() - 16, z) != 0) {
++         return;
++      }
++
++      this.pendingDimension = 0;
++      this.portalCooldown = 100;
++      this.fallDistance = 0.0F;
++      this.motionY = 0.0;
++   }
++
++
 +   private static int voidFallDestination(int dimension) {
 +      if (dimension == 0) {
 +         return 1;
@@ -168,7 +245,7 @@
     }
  
     public void onKillEntity(Mob victim) {
-@@ -1176,6 +1310,12 @@
+@@ -1176,6 +1387,12 @@
        this.sleepTimer = tag.getShort("SleepTimer");
        this.timeWithoutRest = tag.getInteger("TimeWithoutRest");
        this.dimension = tag.getInteger("Dimension");
@@ -181,7 +258,7 @@
        if (this.sleeping) {
           this.bedPosition = new Position(MathHelper.floor_double(this.posX), MathHelper.floor_double(this.posY), MathHelper.floor_double(this.posZ));
           this.wakeUpPlayer(true, true, false);
-@@ -1269,6 +1409,10 @@
+@@ -1269,6 +1486,10 @@
        tag.setInteger("TimeWithoutRest", this.timeWithoutRest);
        tag.setInteger("Dimension", this.dimension);
        tag.setBoolean("FallFlying", this.isGliding());
@@ -192,7 +269,7 @@
        if (this.playerSpawn != null) {
           tag.setInteger("SpawnX", this.playerSpawn.x);
           tag.setInteger("SpawnY", this.playerSpawn.y);
-@@ -1373,7 +1517,10 @@
+@@ -1373,7 +1594,10 @@
     @Override
     public boolean damageEntity(DamageSource src, int amount) {
        this.age = 0;

@@ -97,12 +97,12 @@ public final class PlayerCommands {
       int by = a.length > 1 ? Cmd.intOr(a[1], 1) : 1;
       int x = (int)Math.floor(p.posX), z = (int)Math.floor(p.posZ);
       int y = (int)Math.floor(p.posY) + by;
-      if (y < 1 || y > 126) {
+      World w = p.world;
+      if (y < 1 || y > w.getWorldHeight() - 2) {
          Cmd.msg(p, "That would put you outside the world.");
          return;
       }
 
-      World w = p.world;
       if (!w.blockExists(x, y, z)) {
          Cmd.msg(p, "That position is not loaded yet.");
          return;
@@ -124,14 +124,14 @@ public final class PlayerCommands {
       int x = (int)Math.floor(p.posX), z = (int)Math.floor(p.posZ);
       int from = (int)Math.floor(p.posY);
 
-      for (int y = from + 1; y < 127; y++) {
+      for (int y = from + 1; y < w.getWorldHeight() - 1; y++) {
          if (!w.blockExists(x, y, z)) {
             break;
          }
 
          // Floor with two blocks of headroom above it.
          if (w.getBlockId(x, y, z) != 0 && w.getBlockId(x, y + 1, z) == 0
-               && (y + 2 > 127 || w.getBlockId(x, y + 2, z) == 0)) {
+               && (y + 2 >= w.getWorldHeight() || w.getBlockId(x, y + 2, z) == 0)) {
             ServerCommands.teleport(p, p.dimension, x + 0.5, y + 1, z + 0.5);
             Cmd.msg(p, "Ascended to y=" + (y + 1) + ".");
             return;

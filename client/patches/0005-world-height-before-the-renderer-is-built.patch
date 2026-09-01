@@ -1,0 +1,26 @@
+--- a/net/minecraft/client/network/ClientHandler.java
++++ b/net/minecraft/client/network/ClientHandler.java
+@@ -164,11 +164,22 @@
+       Biome var3 = var2 == WorldType.BIOME ? Biome.findById(var1.singleBiomeId) : null;
+       this.world = new NetworkWorld(this, var1.mapSeed, var1.dimension, var2, var3);
+       this.world.isOnline = true;
++
++      // The server's world height has to be applied BEFORE changeWorld.
++      //
++      // changeWorld ends in worldRenderer.changeWorld -> reloadChunks, and reloadChunks sizes
++      // the chunk renderer array with `chunksHeight = world.getMaxSections()`. This line used
++      // to sit after that call, so the array was built from the client's own default height
++      // (WorldSettings.heightInt, 12 or 16) instead of the server's. On a server taller than
++      // that default, every section above the client's guess had no renderer at all: the blocks
++      // arrived, collided and pick-blocked normally, but were never drawn, leaving a hard
++      // horizontal cut with solid invisible terrain above it.
++      this.world.setMaxSections(var1.maxSections);
++
+       this.mc.changeWorld(this.world, "");
+       this.mc.setScreen(new LoginScreen(this));
+       this.mc.player.entityId = var1.protocolVersion;
+       this.maxPlayers = var1.maxPlayers;
+-      this.world.setMaxSections(var1.maxSections);
+    }
+ 
+    @Override

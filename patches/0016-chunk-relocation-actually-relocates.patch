@@ -1,0 +1,27 @@
+--- a/net/minecraft/game/world/chunk/loader/AnvilLoader.java
++++ b/net/minecraft/game/world/chunk/loader/AnvilLoader.java
+@@ -86,9 +86,21 @@
+                   + chunk.zPosition
+                   + ")"
+             );
+-            tag.setInteger("xPos", x);
+-            tag.setInteger("zPos", z);
+-            chunk = this.readChunkFromNBT(world, tag.getCompoundTag("Level"));
++            // xPos/zPos live inside Level, not on the root tag.
++            //
++            // These two lines used to write to `tag`, and then the chunk was re-read from
++            // tag.getCompoundTag("Level") -- which still held the old coordinates. The repair
++            // was a no-op: the chunk came back mislocated on every single load, forever.
++            //
++            // A chunk whose xPosition/zPosition disagree with the slot it was loaded into makes
++            // Chunk.addEntity take its "Wrong location!" branch, and that branch returns without
++            // setting addedToChunk or adding the entity to the chunk's list. The entity is then
++            // in no chunk at all and stops being ticked -- which for a player means frozen in
++            // place, no inventory, no F3, unable even to die. One bad chunk in a world is enough.
++            CompoundTag level = tag.getCompoundTag("Level");
++            level.setInteger("xPos", x);
++            level.setInteger("zPos", z);
++            chunk = this.readChunkFromNBT(world, level);
+          }
+ 
+          chunk.removeInvalidBlocks();

@@ -1,0 +1,38 @@
+--- a/net/minecraft/client/network/ClientHandler.java
++++ b/net/minecraft/client/network/ClientHandler.java
+@@ -660,7 +660,9 @@
+ 
+    @Override
+    public void handleRespawn(RespawnPacket var1) {
+-      if (this.mc.world != null && (this.mc.world.currDim == null || this.mc.world.currDim.dimension != var1.dimension)) {
++      boolean changedDimension = this.mc.world != null
++         && (this.mc.world.currDim == null || this.mc.world.currDim.dimension != var1.dimension);
++      if (changedDimension) {
+          this.mc.world.setDimension(Dimension.getDimension(var1.dimension));
+          if (this.mc.particleRenderer != null) {
+             this.mc.particleRenderer.clearParticles(this.mc.world);
+@@ -672,6 +674,24 @@
+       }
+ 
+       this.mc.respawn(true);
++
++      // Rebuild every chunk renderer.
++      //
++      // Singleplayer changes dimension by constructing a new World and calling changeWorld,
++      // which ends in worldRenderer.changeWorld -> reloadChunks. Multiplayer never goes near
++      // that path: the server streams the new dimension's chunks into the world the client
++      // already has, and nothing ever tells the renderer to start over. So the renderers still
++      // describe the dimension we just left.
++      //
++      // The blocks are all genuinely there -- they collide, and pick block names them -- they
++      // are simply never drawn. That is what made arriving in the Crimson look like the terrain
++      // had failed to generate, and why the return gate built at the arrival was invisible.
++      //
++      // updateAllRenderers() is not enough: it skips any renderer whose isLit is false, which
++      // is exactly the ones that were never built.
++      if (changedDimension && this.mc.worldRenderer != null) {
++         this.mc.worldRenderer.reloadChunks();
++      }
+    }
+ 
+    @Override

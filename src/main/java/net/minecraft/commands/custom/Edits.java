@@ -82,7 +82,7 @@ public final class Edits {
        * the world or in a chunk that is not loaded -- never generates one.
        */
       public boolean set(int x, int y, int z, int id, int meta) {
-         if (y < 0 || y >= 128) {
+         if (y < 0 || y >= this.world.getWorldHeight()) {
             return false;
          }
 

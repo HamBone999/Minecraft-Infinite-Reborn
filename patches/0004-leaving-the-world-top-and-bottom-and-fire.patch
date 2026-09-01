@@ -1,0 +1,66 @@
+--- a/net/minecraft/game/entity/Entity.java
++++ b/net/minecraft/game/entity/Entity.java
+@@ -363,7 +363,11 @@
+       }
+ 
+       if (this.world.isOnline) {
+-         this.fire = 0;
++         // The server DOES sync "on fire" as flag 0, but this used to blank the field every
++         // tick -- and EntityRenderer draws flames off Entity.fire, not off the flag. So the
++         // state arrived and was thrown away one tick later, and nothing ever looked alight in
++         // multiplayer. Mirror the flag into the field instead of zeroing it.
++         this.fire = this.getFlag(0) ? 1 : 0;
+       } else if (this.fire > 0 && this.canBurn()) {
+          if (this.fire % 20 == 0) {
+             this.damageEntity(DamageSource.onFire, 1);
+@@ -384,7 +388,11 @@
+       }
+ 
+       if (this.posY < -64.0) {
+-         this.kill();
++         this.onFellOutOfWorld();
++      } else if (this.posY < 4.0) {
++         this.onNearWorldBottom();
++      } else if (this.posY > this.world.getWorldHeight() - 4) {
++         this.onNearWorldTop();
+       }
+ 
+       if (!this.world.isOnline) {
+@@ -398,6 +406,37 @@
+    public void despawnTick() {
+    }
+ 
++   /**
++    * Falling out of the bottom of the world. Split out so subclasses can do something other
++    * than die -- for a player in the overworld the void is the way into the hell dimension.
++    */
++   /**
++    * Reached the top of the world, the way {@link #onFellOutOfWorld} is reaching the bottom.
++    * Fires just below the last block layer rather than above it, so a slipgate shaft takes
++    * effect as you rise into it instead of after you have cleared the roof entirely.
++    *
++    * Nothing but the player cares, so the default is to do nothing at all -- an item thrown up
++    * a shaft should not start changing dimension.
++    */
++   protected void onNearWorldTop() {
++   }
++
++   /**
++    * Reached the bottom of the world. The mirror of {@link #onNearWorldTop}, and it fires while
++    * there are still blocks below rather than at -64, so dropping down a slipgate takes effect
++    * inside the shaft instead of after a long fall through the void.
++    *
++    * This does NOT replace {@link #onFellOutOfWorld} at -64: that is still what happens to
++    * anything that genuinely leaves the world, and is still the death for dimensions with no
++    * way out through the floor.
++    */
++   protected void onNearWorldBottom() {
++   }
++
++   protected void onFellOutOfWorld() {
++      this.kill();
++   }
++
+    protected void kill() {
+       this.setDead();
+    }
