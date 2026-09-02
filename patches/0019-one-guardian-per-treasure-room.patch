@@ -1,0 +1,55 @@
+--- a/net/minecraft/game/world/generation/features/structure/stronghold/pieces/TreasureRoom.java
++++ b/net/minecraft/game/world/generation/features/structure/stronghold/pieces/TreasureRoom.java
+@@ -5,6 +5,7 @@
+ import java.util.Random;
+ import net.minecraft.game.block.BlockList;
+ import net.minecraft.game.entity.mob.monster.boss.Guardian;
++import net.minecraft.game.physics.BoundingBox;
+ import net.minecraft.game.item.ItemList;
+ import net.minecraft.game.world.World;
+ import net.minecraft.game.world.generation.features.structure.LegacyStructureBoundingBox;
+@@ -46,6 +47,27 @@
+       }
+    }
+ 
++   /**
++    * Whether this treasure room already has its guardian.
++    *
++    * hasSpawnedBoss cannot answer that on its own. It is a plain field on the structure piece
++    * and is never written to NBT, so every time the piece is rebuilt -- a reload, a re-read of
++    * the structure data -- it comes back false and the room spawns a second guardian on top of
++    * the first. Players reported three at once, each with its own boss bar, and some of them
++    * invisible to one player but not the other, which is what a stack of duplicates looks like.
++    *
++    * Asking the world is the reliable question, because the answer survives whatever happened to
++    * the piece in between. A generous box: spawning no guardian when one is already there is a
++    * far cheaper mistake than spawning another.
++    */
++   private static boolean guardianAlreadyHere(World world, double x, double y, double z) {
++      return !world.getEntitiesOfType(
++            Guardian.class,
++            BoundingBox.getBoundingBox(x - 32.0, y - 24.0, z - 32.0, x + 32.0, y + 24.0, z + 32.0)
++         )
++         .isEmpty();
++   }
++
+    public static TreasureRoom findValidPlacement(List<LegacyStructurePiece> pcs, Random rand, int x, int y, int z, int rot, int id) {
+       LegacyStructureBoundingBox bb = LegacyStructureBoundingBox.addToBB(x, y, z, -4, -1, 0, 11, 8, 16, rot);
+       return LegacyStructurePiece.findIntersecting(pcs, bb) == null ? new TreasureRoom(id, rand, bb, rot) : null;
+@@ -93,10 +115,13 @@
+       this.fill(world, bb, 5, 5, 12, 5, 5, 12, BlockList.lantern.id, BlockList.lantern.id, false);
+       this.fill(world, bb, 3, 5, 10, 3, 5, 10, BlockList.lantern.id, BlockList.lantern.id, false);
+       this.fill(world, bb, 7, 5, 10, 7, 5, 10, BlockList.lantern.id, BlockList.lantern.id, false);
+-      if (!this.hasSpawnedBoss) {
++      int bossX = this.getXWithOffset(5, 10);
++      int bossY = this.getYWithOffset(5);
++      int bossZ = this.getZWithOffset(5, 10);
++      if (!this.hasSpawnedBoss && !guardianAlreadyHere(world, bossX, bossY, bossZ)) {
+          Guardian entitygolem = new Guardian(world);
+-         entitygolem.setPosAndRot(this.getXWithOffset(5, 10), this.getYWithOffset(5), this.getZWithOffset(5, 10), world.rand.nextFloat() * 360.0F, 0.0F);
+-         entitygolem.setPosition(this.getXWithOffset(5, 10), this.getYWithOffset(5), this.getZWithOffset(5, 10));
++         entitygolem.setPosAndRot(bossX, bossY, bossZ, world.rand.nextFloat() * 360.0F, 0.0F);
++         entitygolem.setPosition(bossX, bossY, bossZ);
+          world.spawnEntity(entitygolem);
+          this.hasSpawnedBoss = true;
+       }

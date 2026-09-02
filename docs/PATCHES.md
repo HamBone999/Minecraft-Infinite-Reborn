@@ -25,12 +25,14 @@ same shape on the next bump: re-pin `base/`, re-run setup, and hand-rebase whate
 | `0005-pets-stay-sitting-when-told-to` | **upstream #5 / #27** -- the sit action bailed out while the owner was fighting nearby, which cleared the mob's sitting flag while the order stayed set, so pets stood up and teleported mid-fight |
 | `0006-fox-held-item-is-visible` | **upstream #18** -- `Fox.heldItem` was server-only, so `FoxRenderer.renderEquippedItems` always drew an empty-handed fox |
 | `0007-pet-interaction-consumes-the-click` | **upstream #26** -- the pet interaction toggled sitting then reported the click unhandled, so the caller also ate the food you were holding |
-| `0008-frozen-mobs-look-frozen` | **upstream #23** -- `Mob.freeze` never left the server, so `MobRenderer`'s tint never triggered |
+| `0008-frozen-mobs-and-boss-health-sync` | **upstream #23** -- `Mob.freeze` never left the server, so `MobRenderer`'s tint never triggered. Also **upstream #29**: `MobPacket` carries no health and nothing else sent it, so a client's copy of a boss stayed at its constructed value and the boss bar never moved |
 | `0009-dimension-requests-velocity-hook-and-god-mode` | dreamcatcher/void-fall routing, crawl persistence, the velocity hook `Explosion` needs, and the `godMode` check in `damageEntity` that `/god` sets |
 | `0010-explosion-knockback-reaches-the-player` | **upstream #21** -- knockback was applied server-side and never transmitted; ordinary explosions hid it because the damage still landed, the wind creeper deals none |
 | `0011-random-block-ticks-must-not-generate-chunks` | random ticks were driving terrain generation, causing `Can't keep up` |
 | `0012-slipgate-arrival-commands-and-wand` | slipgate arrivals: the entry position is captured before the player entity is replaced, and arrivals land in the gate itself -- the shaft in the Crimson, the surrounding chamber everywhere else. Also lets the selection wand consume clicks |
 | `0016-chunk-relocation-actually-relocates` | a mislocated chunk could never be repaired, which froze any player who walked into it |
+| `0018-respawn-loads-the-bed-chunk` | **upstream #25** -- `wakeUpPlayer` only reads the block, and an unloaded chunk answers with the dummy all-air chunk, so a bed reported itself missing whenever nobody was near it. Also lands a dimension arrival at the player's bed, which `recreatePlayerEntity` cannot do because it reads `getSpawn(dimension)` *before* assigning the new one |
+| `0019-one-guardian-per-treasure-room` | **upstream #42** -- `hasSpawnedBoss` is an instance field on the structure piece and is never written to NBT, so every reconstruction spawned another Guardian on top of the last |
 | `0017-help-grouped-ranked-and-paged` | `/help` was one flat alphabetical burst of every command; now grouped by origin, ordered player-then-operator, and paged |
 | `0013-connection-throttle-window-and-no-re-arm` | random `End of stream` rejections |
 | `0014-teleports-velocity-and-chunk-queue` | teleports tripped the movement check; chunks arrived one per movement packet |

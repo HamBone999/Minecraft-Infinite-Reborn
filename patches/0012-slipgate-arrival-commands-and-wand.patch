@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/network/NetServerHandler.java
 +++ b/net/minecraft/server/network/NetServerHandler.java
-@@ -12,18 +12,23 @@
+@@ -12,18 +12,24 @@
  import java.util.logging.Logger;
  import net.minecraft.SharedConstants;
  import net.minecraft.commands.CommandOutput;
@@ -21,10 +21,11 @@
  import net.minecraft.game.physics.BoundingBox;
 +import net.minecraft.game.world.chunk.BlockPosition;
 +import net.minecraft.game.world.generation.structures.misc.Slipgate;
++import net.minecraft.game.entity.player.Player;
  import net.minecraft.game.world.util.Position;
  import net.minecraft.localization.Translator;
  import net.minecraft.network.NetworkHandler;
-@@ -62,6 +67,9 @@
+@@ -62,6 +68,9 @@
  import net.minecraft.util.math.MathHelper;
  
  public class NetServerHandler extends NetworkHandler implements CommandOutput {
@@ -34,7 +35,7 @@
     public static Logger logger = Logger.getLogger("Minecraft");
     public NetworkManager netManager;
     public boolean connectionClosed = false;
-@@ -88,6 +96,43 @@
+@@ -88,6 +97,43 @@
     }
  
     public void handlePackets() {
@@ -78,7 +79,7 @@
        this.netManager.update();
        if (this.lastHealth - this.currentHealth > 20) {
           this.currentHealth = this.lastHealth;
-@@ -97,11 +142,231 @@
+@@ -97,11 +143,265 @@
        }
     }
  
@@ -128,6 +129,40 @@
 +      if (gate != null) {
 +         x = gate.x;
 +         z = gate.z;
++      }
++
++      // No gate involved, so this is a fall out of one world into another -- out of the Sky, or
++      // out of the overworld floor. If the player has a bed in the world they are arriving in,
++      // that is where they expect to turn up.
++      //
++      // recreatePlayerEntity tries to do this already and cannot: it reads getSpawn(dimension)
++      // BEFORE assigning the new dimension, so a trip from the Sky asks for a bed in the Sky and
++      // finds none. By the time this runs the dimension has been switched, so the same call
++      // finally asks the right question. wakeUpPlayer is what says whether the bed is still
++      // there and unobstructed; a bed that has been broken answers null and we fall through.
++      if (gate == null) {
++         Position bed = player.getSpawn(player.dimension);
++         if (bed != null) {
++            // Same reason as the respawn path: an unloaded chunk reads as air, so the bed has
++            // to be loaded before anything asks whether it is still a bed.
++            world.chunkProviderServer.loadChunk(bed.x >> 4, bed.z >> 4);
++            Position safe = Player.wakeUpPlayer(world, bed, player.dimension);
++            if (safe != null) {
++               world.chunkProviderServer.loadChunk(safe.x >> 4, safe.z >> 4);
++               player.fallDistance = 0.0F;
++               player.motionY = 0.0;
++               player.setPosition(safe.x + 0.5, safe.y + 0.1, safe.z + 0.5);
++               this.teleportTo(safe.x + 0.5, safe.y + 0.1, safe.z + 0.5, player.yaw, player.pitch);
++               player.portalCooldown = PORTAL_GRACE_TICKS;
++
++               logger.info(
++                  player.username + " arrived in dimension " + player.dimension
++                     + " at " + safe.x + "," + safe.y + "," + safe.z
++                     + " [entered from " + fromX + "," + fromZ + "] (at their bed)"
++               );
++               return;
++            }
++         }
 +      }
 +
 +      world.chunkProviderServer.loadChunk(x >> 4, z >> 4);
@@ -310,7 +345,7 @@
        this.mcServer.configManager.playerLoggedOut(this.playerEntity);
        this.connectionClosed = true;
     }
-@@ -315,6 +580,17 @@
+@@ -315,6 +615,17 @@
     @Override
     public void handleBlockDig(DigPacket packet14BlockDig1) {
        WorldServer worldServer2 = this.mcServer.getWorldManager(this.playerEntity.dimension);
@@ -328,7 +363,7 @@
        if (packet14BlockDig1.status == 4) {
           this.playerEntity.dropCurrentItem(1);
        } else if (packet14BlockDig1.status == 5) {
-@@ -384,6 +660,16 @@
+@@ -384,6 +695,16 @@
     @Override
     public void handlePlace(PlacePacket packet15Place1) {
        WorldServer worldServer2 = this.mcServer.getWorldManager(this.playerEntity.dimension);
@@ -345,7 +380,7 @@
        ItemStack itemStack3 = this.playerEntity.inventory.getCurrentItem();
        if (this.playerEntity.inventory.canUseItem()) {
           itemStack3 = this.playerEntity.inventory.getOffHandItem();
-@@ -471,6 +757,7 @@
+@@ -471,6 +792,7 @@
     public void handleErrorMessage(String string1, Object... format) {
        logger.info(this.playerEntity.username + " lost connection: " + Translator.getInstance().translateKeyFormat(string1, format));
        this.mcServer.configManager.sendPacketToAll(new ChatPacket("§e" + this.playerEntity.username + " left the game."));
@@ -353,7 +388,7 @@
        this.mcServer.configManager.playerLoggedOut(this.playerEntity);
        this.connectionClosed = true;
     }
-@@ -533,6 +820,12 @@
+@@ -533,6 +855,12 @@
     }
  
     private void handleSlashCommand(String string1) {

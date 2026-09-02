@@ -1,0 +1,22 @@
+--- a/net/minecraft/server/ServerConfigurationManager.java
++++ b/net/minecraft/server/ServerConfigurationManager.java
+@@ -191,8 +191,18 @@
+       entityPlayerMP4.clone(entityPlayerMP1, false);
+       WorldServer worldServer5 = this.mcServer.getWorldManager(entityPlayerMP1.dimension);
+       if (chunkCoordinates3 != null) {
++         // Load the bed's chunk before asking whether the bed is still there.
++         //
++         // wakeUpPlayer just reads the block, and an unloaded chunk answers with the dummy
++         // chunk -- all air -- so a bed the player has slept in for a week reports itself
++         // missing purely because nobody was standing near it. The player then wakes at world
++         // spawn with "your home bed is missing or obstructed", which is the one message
++         // guaranteed to look like the game ate their bed.
++         WorldServer bedWorld = this.mcServer.getWorldManager(entityPlayerMP1.dimension);
++         bedWorld.chunkProviderServer.loadChunk(chunkCoordinates3.x >> 4, chunkCoordinates3.z >> 4);
++
+          Position chunkCoordinates6 = Player.wakeUpPlayer(
+-            this.mcServer.getWorldManager(entityPlayerMP1.dimension), chunkCoordinates3, entityPlayerMP1.dimension
++            bedWorld, chunkCoordinates3, entityPlayerMP1.dimension
+          );
+          if (chunkCoordinates6 != null) {
+             entityPlayerMP4.setPosAndRot(chunkCoordinates6.x + 0.5F, chunkCoordinates6.y + 0.1F, chunkCoordinates6.z + 0.5F, 0.0F, 0.0F);

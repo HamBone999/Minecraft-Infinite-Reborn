@@ -1,12 +1,18 @@
 --- a/net/minecraft/game/entity/mob/Mob.java
 +++ b/net/minecraft/game/entity/mob/Mob.java
-@@ -134,6 +134,37 @@
+@@ -134,6 +134,71 @@
  
     protected void init() {
        this.dataSync.addObject(8, this.effectID);
 +      // Slot 9 carries "is frozen" to clients. Slots 0-3, 5, 8, 10 and 15-19 are taken
 +      // elsewhere under game/entity; 9 is unused by every mob.
 +      this.dataSync.addObject(9, (byte)0);
++
++      // Slot 20 carries a boss's health to clients. Registered for every mob rather than only
++      // bosses because init() runs from the Mob constructor, before a subclass has had the
++      // chance to set its boss flag -- the sync itself is gated on it, so ordinary mobs cost
++      // one unchanging int and never send an update.
++      this.dataSync.addObject(20, Integer.valueOf(this.health));
 +   }
 +
 +   /**
@@ -19,6 +25,34 @@
 +    * Sent as a flag rather than the countdown so it only produces a packet when the state
 +    * actually changes, instead of once per tick for the whole freeze.
 +    */
++   /**
++    * Carry a boss's health to clients, so the boss bar means something.
++    *
++    * MobPacket -- the spawn packet for every mob -- carries id, type, position and rotation and
++    * no health at all, and nothing else sent it either. HeadsUpDisplay draws the bar straight
++    * from boss.health, so a client's copy of a boss sat at the health its constructor gave it
++    * and the bar stayed full no matter how much damage was dealt.
++    *
++    * Only bosses sync. Every mob having its health tracked would be a packet per mob per hit
++    * across the whole world, to draw nothing.
++    */
++   private void syncBossHealth() {
++      if (!this.boss) {
++         return;
++      }
++
++      if (this.world.isOnline) {
++         // Defensive: a server too old to send slot 20 should leave the bar alone rather than
++         // throw on every frame.
++         try {
++            this.health = this.dataSync.getObjectInt(20);
++         } catch (Throwable ignored) {
++         }
++      } else if (this.dataSync.getObjectInt(20) != this.health) {
++         this.dataSync.updateObject(20, Integer.valueOf(this.health));
++      }
++   }
++
 +   private void syncFrozen() {
 +      if (this.world.isOnline) {
 +         // Entity.onTick decrements freeze on the client too, so re-assert it every tick rather
@@ -38,11 +72,12 @@
     }
  
     public String getTexture() {
-@@ -406,6 +437,7 @@
+@@ -406,6 +471,8 @@
        super.onTick();
        this.mobTick();
        this.rotateBody();
 +      this.syncFrozen();
++      this.syncBossHealth();
  
        while (this.yaw - this.prevYaw < -180.0F) {
           this.prevYaw -= 360.0F;
