@@ -15,6 +15,15 @@ public final class HelpListing {
    public static void register(CommandDispatcher<CommandSourceStack> d) {
       String[] names = { "ac" };
       for (int i = 0; i < names.length; i++) reg(d, names[i]);
+
+      // Group these under one heading in /help. Wrapped because HelpCategories lives in the
+      // server jar: an older server without it should leave these commands uncategorised, not
+      // stop the addon loading.
+      try {
+         net.minecraft.commands.custom.HelpCategories.register("Anticheat", "ac");
+      } catch (Throwable t) {
+         System.out.println("[anticheat] /help categories unavailable on this server build");
+      }
       System.out.println("[anticheat] " + names.length + " commands registered for /help");
    }
 

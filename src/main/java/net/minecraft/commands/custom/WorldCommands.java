@@ -382,6 +382,13 @@ public final class WorldCommands {
       }
 
       p.world.setSpawnPoint(new Position(x, y, z));
+
+      // Keep /spawn pointing at the same place. /setspawn and /spawnpoint are two names for
+      // one idea, and letting them write different records is how "spawn" ends up meaning two
+      // different spots depending on which command somebody happened to use.
+      PointStore.put("spawn", new PointStore.Point(p.dimension, x + 0.5, y, z + 0.5, p.yaw, p.pitch));
+
       Cmd.msg(p, "World spawn for this dimension set to " + x + " " + y + " " + z + ".");
+      Cmd.msg(p, "New players arrive and respawns land here, and /spawn brings you here.");
    }
 }

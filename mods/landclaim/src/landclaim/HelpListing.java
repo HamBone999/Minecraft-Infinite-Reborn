@@ -18,6 +18,15 @@ public final class HelpListing {
       register(d, "abandon", false);
       register(d, "trust", true);
       register(d, "untrust", true);
+
+      // Group these under one heading in /help. Wrapped because HelpCategories lives in the
+      // server jar: an older server without it should leave these commands uncategorised, not
+      // stop the addon loading.
+      try {
+         net.minecraft.commands.custom.HelpCategories.register("Land Claims", "claim", "claiminfo", "abandon", "trust", "untrust");
+      } catch (Throwable t) {
+         System.out.println("[landclaim] /help categories unavailable on this server build");
+      }
       System.out.println("[landclaim] 5 commands registered for /help");
    }
 

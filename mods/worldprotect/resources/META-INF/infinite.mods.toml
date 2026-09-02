@@ -1,0 +1,14 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+
+[[mods]]
+modId = "worldprotect"
+version = "0.1.0"
+displayName = "World Protect"
+description = "Operator-defined regions with flags -- spawn protection and anywhere else that needs it."
+authors = "hambone"
+entrypoint = "worldprotect.WorldProtectMod"
+
+[[mixins]]
+config = "worldprotect.mixins.json"

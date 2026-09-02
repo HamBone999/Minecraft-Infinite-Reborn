@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import net.minecraft.commands.custom.PointStore.Point;
 import net.minecraft.game.world.World;
+import net.minecraft.game.world.util.Position;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.player.EntityPlayerMP;
 
@@ -82,7 +83,7 @@ public final class ServerCommands {
 
       if (c.equals("dimension") || c.equals("dim")) { if (needOp(p, op)) return true; dimension(p, a); return true; }
 
-      if (c.equals("setspawn")) { if (needOp(p, op)) return true; PointStore.put("spawn", here(p)); msg(p, "Spawn set."); return true; }
+      if (c.equals("setspawn")) { if (needOp(p, op)) return true; setSpawnHere(p); return true; }
       if (c.equals("setwarp"))  { if (needOp(p, op)) return true;
                                   if (a.length < 2) { msg(p, "Usage: /setwarp <name>"); return true; }
                                   PointStore.put("warp:" + a[1].toLowerCase(), here(p));
@@ -165,6 +166,29 @@ public final class ServerCommands {
 
    private static void msg(EntityPlayerMP p, String s) {
       p.addChatMessage(s);
+   }
+
+   /**
+    * Sets the real spawn for the dimension the caller is standing in, and points /spawn at it.
+    *
+    * This used to write only the /spawn teleport point, which meant "set spawn" moved where
+    * /spawn sent you and nothing else: new players still arrived, and everybody still respawned,
+    * wherever the world was generated. That is not what anyone types /setspawn for.
+    *
+    * Both are written together on purpose. Two separate places to record "spawn" is two things
+    * that can disagree, and the version a player meets on their first join is the one nobody
+    * remembered to set.
+    */
+   private static void setSpawnHere(EntityPlayerMP p) {
+      int x = (int)Math.floor(p.posX);
+      int y = (int)Math.floor(p.posY);
+      int z = (int)Math.floor(p.posZ);
+
+      PointStore.put("spawn", here(p));
+      p.world.setSpawnPoint(new Position(x, y, z));
+
+      msg(p, "Spawn for " + nameOf(p.dimension) + " set to " + x + "," + y + "," + z + ".");
+      msg(p, "New players arrive and respawns land here, and /spawn brings you here.");
    }
 
    private static boolean needOp(EntityPlayerMP p, boolean op) {

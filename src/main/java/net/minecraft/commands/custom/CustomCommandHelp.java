@@ -39,6 +39,30 @@ public final class CustomCommandHelp {
       for (int i = 0; i < opPlain.length; i++) reg(d, opPlain[i], false, true);
       for (int i = 0; i < opArgs.length; i++) reg(d, opArgs[i], true, true);
 
+      // Group them in /help rather than scattering thirty commands through one alphabetical
+      // list. The // editor is registered as plain lines because it never reaches Brigadier --
+      // handleSlashCommand consumes those before the dispatcher sees them -- so a listing built
+      // from the command tree cannot find it and you had to already know it was there.
+      // Two headings, not one sorted list. Ordering op commands last within a single section
+      // is invisible: nothing on screen says where /warp stops and /setblock starts, so
+      // /fill and /god read as things any player might run. A heading says it outright.
+      HelpCategories.register("Infinite", 0, plain);
+      HelpCategories.register("Infinite", 0, plainArgs);
+      HelpCategories.register("Infinite (op)", 0, opPlain);
+      HelpCategories.register("Infinite (op)", 0, opArgs);
+
+      // The stock admin commands were the only things left in the unheaded block at the top,
+      // which put /ban and /unban above every grouped heading and made them look like commands
+      // anyone could reach. They are named here purely to file them; nothing else changes.
+      HelpCategories.register("Server (op)", 1,
+         "ban", "unban", "kick", "op", "deop", "stop", "give", "gamemode", "tp");
+
+      HelpCategories.line("Region editing (op)", "//wand -- toggle the selection wand");
+      HelpCategories.line("Region editing (op)", "//pos1 | //pos2 -- corners at your feet");
+      HelpCategories.line("Region editing (op)", "//size | //count <block>");
+      HelpCategories.line("Region editing (op)", "//set <block> | //replace <from> <to>");
+      HelpCategories.line("Region editing (op)", "//copy | //paste | //undo");
+
       System.out.println("[commands] " + (plain.length + plainArgs.length + opPlain.length + opArgs.length) + " commands registered for /help");
    }
 

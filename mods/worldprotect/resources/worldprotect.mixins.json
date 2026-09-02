@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "worldprotect.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "minVersion": "0.8",
+  "mixins": [
+    "GuardMixin",
+    "ExplosionMixin",
+    "CoreCommandsMixin"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

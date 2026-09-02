@@ -184,6 +184,27 @@ skips later listeners unless their event type is annotated `@ReceiveCancelled`.
 **A listener that throws is reported and unsubscribed**, not allowed to take down every other
 mod's listeners. Pass your modId as the owner so the message names you.
 
+## Appearing in /help
+
+Register your commands with Brigadier so `/help` can see them, then file them under a heading:
+
+```java
+net.minecraft.commands.custom.HelpCategories.register("My Addon", 0, "mycmd", "myother");
+net.minecraft.commands.custom.HelpCategories.line("My Addon", "/mycmd sub -- what it does");
+```
+
+`register` takes a rank: 0 for commands anyone can run, 1 for operator ones, and a category is
+listed in rank order then alphabetically. `line` adds a listing entry that is not a command node
+-- use it for subcommands parsed out of an argument string, which Brigadier cannot describe.
+
+`HelpCategories` lives in the server jar, so wrap the call if your addon should also run on an
+older server that predates it:
+
+```java
+try { HelpCategories.register("My Addon", 0, "mycmd"); }
+catch (Throwable t) { /* older server: uncategorised, still works */ }
+```
+
 ## Multiplayer and the registry sync
 
 Entity ids are allocated locally but travel over the wire, so a client and server with mods

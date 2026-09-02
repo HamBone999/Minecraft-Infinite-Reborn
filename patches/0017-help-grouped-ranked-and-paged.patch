@@ -1,0 +1,159 @@
+--- a/net/minecraft/commands/core/HelpCommand.java
++++ b/net/minecraft/commands/core/HelpCommand.java
+@@ -10,6 +10,7 @@
+ import net.minecraft.commands.CommandMessages;
+ import net.minecraft.commands.CommandSourceStack;
+ import net.minecraft.commands.Commands;
++import net.minecraft.commands.custom.HelpCategories;
+ 
+ public final class HelpCommand {
+    private HelpCommand() {
+@@ -18,15 +19,91 @@
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+       dispatcher.register(
+          Commands.literal("help")
+-            .executes(ctx -> list(dispatcher, ctx.getSource()))
++            .executes(ctx -> list(dispatcher, ctx.getSource(), 1))
+             .then(
+                Commands.argument("command", StringArgumentType.word())
+-                  .executes(ctx -> detail(dispatcher, ctx.getSource(), StringArgumentType.getString(ctx, "command")))
++                  .executes(ctx -> {
++                     // "/help 2" is a page, "/help give" is a command. Deciding here keeps both
++                     // on one argument, so /help <command> behaves exactly as it did.
++                     String arg = StringArgumentType.getString(ctx, "command");
++                     try {
++                        return list(dispatcher, ctx.getSource(), Integer.parseInt(arg));
++                     } catch (NumberFormatException notAPage) {
++                        return detail(dispatcher, ctx.getSource(), arg);
++                     }
++                  })
+             )
+       );
+    }
+ 
+-   private static int list(CommandDispatcher<CommandSourceStack> dispatcher, CommandSourceStack source) {
++   /**
++    * How many command lines fit on one page without scrolling the chat away.
++    *
++    * Measured rather than guessed: at 12 the chat still showed six lines of the previous page
++    * after paging, so the window holds that much more than the first estimate. The header and
++    * the page footer are printed on top of this, so a page is PER_PAGE + 2 lines of chat.
++    */
++   private static final int PER_PAGE = 18;
++
++   /**
++    * Lists every command the caller may use, grouped by where it came from, a page at a time.
++    *
++    * This used to be one flat alphabetical run of the whole Brigadier root printed in a single
++    * burst. That stopped being readable once the addons arrived -- nothing connected /claim to
++    * /trust, the // region editor was invisible because it never reaches Brigadier at all, and
++    * with sixty-odd commands the start of the list scrolled out of chat before it could be
++    * read. Commands nobody has claimed are still printed first and unheaded, so plain vanilla
++    * help looks unchanged.
++    */
++   private static int list(CommandDispatcher<CommandSourceStack> dispatcher, CommandSourceStack source, int page) {
++      List<String> headers = new ArrayList<>();
++      List<String> lines = new ArrayList<>();
++      collect(dispatcher, source, headers, lines);
++
++      int pages = Math.max(1, (lines.size() + PER_PAGE - 1) / PER_PAGE);
++      if (page < 1) {
++         page = 1;
++      }
++
++      if (page > pages) {
++         page = pages;
++      }
++
++      source.sendSuccess(CommandMessages.translate("commands.help.header"));
++
++      int from = (page - 1) * PER_PAGE;
++      int to = Math.min(lines.size(), from + PER_PAGE);
++      String shownHeader = null;
++
++      for (int i = from; i < to; i++) {
++         String header = headers.get(i);
++         if (header == null) {
++            shownHeader = null;
++         } else if (!header.equals(shownHeader)) {
++            // Repeated at the top of a page that continues a section, so a page never opens
++            // with a list of commands and no clue what they belong to.
++            source.sendSuccess("§6-- " + header + (i == from && from > 0 ? " (continued)" : "") + " --");
++            shownHeader = header;
++         }
++
++         source.sendSuccess("§e" + lines.get(i));
++      }
++
++      source.sendSuccess("§7Page " + page + " of " + pages
++         + (page < pages ? " -- /help " + (page + 1) + " for more" : ""));
++      return to - from;
++   }
++
++   /**
++    * Flattens the listing into parallel lists of line and owning category, so paging can be
++    * counted in the lines a player actually sees. A null category is the unheaded first group.
++    */
++   private static void collect(
++      CommandDispatcher<CommandSourceStack> dispatcher,
++      CommandSourceStack source,
++      List<String> headers,
++      List<String> lines
++   ) {
+       List<CommandNode<CommandSourceStack>> visible = new ArrayList<>();
+ 
+       for (CommandNode<CommandSourceStack> node : dispatcher.getRoot().getChildren()) {
+@@ -36,15 +113,48 @@
+       }
+ 
+       visible.sort(Comparator.comparing(CommandNode::getName));
+-      source.sendSuccess(CommandMessages.translate("commands.help.header"));
+ 
+-      for (CommandNode<CommandSourceStack> nodex : visible) {
+-         for (String usage : Commands.usage(dispatcher, nodex, source)) {
+-            source.sendSuccess("§e" + usage);
++      for (CommandNode<CommandSourceStack> node : visible) {
++         if (HelpCategories.categoryOf(node.getName()) == null) {
++            for (String usage : Commands.usage(dispatcher, node, source)) {
++               headers.add(null);
++               lines.add(usage);
++            }
+          }
+       }
+ 
+-      return visible.size();
++      for (String category : HelpCategories.categories()) {
++         List<CommandNode<CommandSourceStack>> mine = new ArrayList<>();
++         for (CommandNode<CommandSourceStack> node : visible) {
++            if (category.equals(HelpCategories.categoryOf(node.getName()))) {
++               mine.add(node);
++            }
++         }
++
++         // Rank first, name second: a category reads as "what anyone can do" followed by
++         // "what only operators can", rather than alphabetically mixing the two.
++         mine.sort(
++            Comparator.<CommandNode<CommandSourceStack>>comparingInt(n -> HelpCategories.rankOf(n.getName()))
++               .thenComparing(CommandNode::getName)
++         );
++
++         List<String> extra = HelpCategories.extraLines(category);
++         if (mine.isEmpty() && extra.isEmpty()) {
++            continue;
++         }
++
++         for (CommandNode<CommandSourceStack> node : mine) {
++            for (String usage : Commands.usage(dispatcher, node, source)) {
++               headers.add(category);
++               lines.add(usage);
++            }
++         }
++
++         for (int i = 0; i < extra.size(); i++) {
++            headers.add(category);
++            lines.add(extra.get(i));
++         }
++      }
+    }
+ 
+    private static int detail(CommandDispatcher<CommandSourceStack> dispatcher, CommandSourceStack source, String name) throws CommandSyntaxException {

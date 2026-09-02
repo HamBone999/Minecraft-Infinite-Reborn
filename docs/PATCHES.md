@@ -31,6 +31,7 @@ same shape on the next bump: re-pin `base/`, re-run setup, and hand-rebase whate
 | `0011-random-block-ticks-must-not-generate-chunks` | random ticks were driving terrain generation, causing `Can't keep up` |
 | `0012-slipgate-arrival-commands-and-wand` | slipgate arrivals: the entry position is captured before the player entity is replaced, and arrivals land in the gate itself -- the shaft in the Crimson, the surrounding chamber everywhere else. Also lets the selection wand consume clicks |
 | `0016-chunk-relocation-actually-relocates` | a mislocated chunk could never be repaired, which froze any player who walked into it |
+| `0017-help-grouped-ranked-and-paged` | `/help` was one flat alphabetical burst of every command; now grouped by origin, ordered player-then-operator, and paged |
 | `0013-connection-throttle-window-and-no-re-arm` | random `End of stream` rejections |
 | `0014-teleports-velocity-and-chunk-queue` | teleports tripped the movement check; chunks arrived one per movement packet |
 | `0015-server-can-locate-structures` | `ChunkProviderServer.findClosestStructure` was a hardcoded `return null`, so nothing server-side could ever find a structure. The Crimson Eye always answered "no slipgate found nearby" in multiplayer, and slipgate arrivals could never aim at the gate on the far side |
@@ -169,6 +170,37 @@ two-high room still works.
 > for the version string rather than for the behaviour. The caller tested for a refusal the
 > function could never return, so the roof bug was still live in a release whose notes said it
 > was fixed. Verify the logic, not the presence of a build.
+
+## /help
+
+`/help` walked the Brigadier root and printed every node in one flat alphabetical run. Fine for
+a dozen vanilla commands, useless at sixty: nothing connected `/claim` to `/trust`, the stock
+admin commands sat above every heading looking like anyone could run them, and the top of the
+list scrolled out of chat before it could be read.
+
+`HelpCategories` is the registry behind the grouping. Addons reach it the same way they reach
+the rest of the game -- it is in the server jar, already on their classpath -- so grouping cost
+no addon API change. Anything unclaimed stays in the first unheaded group, which keeps plain
+vanilla `/help` looking as it did.
+
+> [!IMPORTANT]
+> The `//` region editor cannot be listed from the command tree. `handleSlashCommand` consumes
+> those lines before Brigadier sees them, and a Brigadier literal cannot usefully be named
+> `/set`, so they are registered as plain display lines instead. Without that they are invisible
+> and you have to already know they exist.
+
+Ranking within a category was not enough on its own. Sorting operator commands last is invisible
+-- nothing on screen says where `/warp` stops and `/setblock` starts -- so the operator half
+gets its own heading rather than just a lower sort position.
+
+Page size is measured, not guessed: at 12 lines the previous page was still visible underneath,
+so it is 18.
+
+> [!NOTE]
+> `/setspawn` used to write only the `/spawn` teleport point, so "set spawn" moved where `/spawn`
+> sent you and nothing else -- new players still arrived, and everyone still respawned, wherever
+> the world was generated. It now sets the dimension's real spawn as well, and `/spawnpoint`
+> writes both too, because two records of "spawn" is two things that can disagree.
 
 ### Diagnosed but NOT fixed
 
