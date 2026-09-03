@@ -1,0 +1,27 @@
+--- a/net/minecraft/game/item/weapons/Crossbow.java
++++ b/net/minecraft/game/item/weapons/Crossbow.java
+@@ -67,7 +67,12 @@
+                      arrow.setKnockback(dmgMultiplier);
+                   }
+ 
+-                  world.spawnEntity(arrow);
++                  // Server side only. This runs on both sides in multiplayer, so without the guard the
++                  // client spawns its own untracked copy: it renders and ticks, but the server never
++                  // knows it exists, so it does nothing and cannot be removed.
++                  if (!world.isOnline) {
++                     world.spawnEntity(arrow);
++                  }
+                }
+ 
+                world.playEntitySound(player, "random.crossbow", 1.0F, 1.0F / (rand.nextFloat() * 0.4F + 1.2F) + force * 0.5F);
+@@ -141,7 +146,9 @@
+             }
+ 
+             world.playEntitySound(player, "random.crossbow", 1.0F, 1.0F / (rand.nextFloat() * 0.4F + 1.2F) + force * 0.5F);
+-            world.spawnEntity(arrowx);
++            if (!world.isOnline) {
++               world.spawnEntity(arrowx);
++            }
+             if (hasGoldenQuiver) {
+                player.inventory.accessorySlots[2].damageItem(1, player);
+                stack.damageItem(1, player);

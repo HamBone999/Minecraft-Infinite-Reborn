@@ -1,0 +1,22 @@
+--- a/net/minecraft/game/item/staff/PharaohStaff.java
++++ b/net/minecraft/game/item/staff/PharaohStaff.java
+@@ -24,10 +24,15 @@
+          human2.setPosAndRot(player.posX - 1.0, player.posY, player.posZ, player.pitch, player.yaw);
+          human3.setPosAndRot(player.posX, player.posY, player.posZ + 1.0, player.pitch, player.yaw);
+          human4.setPosAndRot(player.posX, player.posY, player.posZ - 1.0, player.pitch, player.yaw);
+-         world.spawnEntity(human1);
+-         world.spawnEntity(human2);
+-         world.spawnEntity(human3);
+-         world.spawnEntity(human4);
++         // Server side only. use() runs on both sides in multiplayer, so without this the
++         // client spawns its own untracked copy: it renders and ticks, but the server
++         // never knows it exists, so it does nothing and cannot be removed.
++         if (!world.isOnline) {
++            world.spawnEntity(human1);
++            world.spawnEntity(human2);
++            world.spawnEntity(human3);
++            world.spawnEntity(human4);
++         }
+          world.playSoundEffect(player, player.posX, player.posY, player.posZ, "random.breath", 1.0F, 1.0F / (world.rand.nextFloat() * 0.4F + 0.8F));
+ 
+          for (int i = 0; i < 20; i++) {

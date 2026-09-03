@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/item/misc/GlowstickItem.java
++++ b/net/minecraft/game/item/misc/GlowstickItem.java
+@@ -16,7 +16,12 @@
+    @Override
+    public ItemStack use(ItemStack stack, World world, Player player) {
+       world.playEntitySound(player, "random.throw", 0.5F, 0.4F / (rand.nextFloat() * 0.4F + 0.8F));
+-      world.spawnEntity(new Glowstick(world, player, 1.0F));
++      // Server side only. use() runs on both sides in multiplayer, so without this the
++      // client spawns its own untracked copy: it renders and ticks, but the server
++      // never knows it exists, so it does nothing and cannot be removed.
++      if (!world.isOnline) {
++         world.spawnEntity(new Glowstick(world, player, 1.0F));
++      }
+       if (player.properties.gamemode != 1) {
+          stack.stackSize--;
+       }

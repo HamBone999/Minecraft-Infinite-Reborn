@@ -1,0 +1,34 @@
+--- a/net/minecraft/game/block/decoration/Grave.java
++++ b/net/minecraft/game/block/decoration/Grave.java
+@@ -75,11 +75,18 @@
+          if (world.rand.nextBoolean()) {
+             Skeleton skellieBum = new Skeleton(world);
+             skellieBum.setPosition(xCoord, yCoord, zCoord);
+-            world.spawnEntity(skellieBum);
++            // Server side only. This runs on both sides in multiplayer, so without the guard the
++            // client spawns its own untracked copy: it renders and ticks, but the server never
++            // knows it exists, so it does nothing and cannot be removed.
++            if (!world.isOnline) {
++               world.spawnEntity(skellieBum);
++            }
+          } else {
+             Zombie zambi = new Zombie(world);
+             zambi.setPosition(xCoord, yCoord, zCoord);
+-            world.spawnEntity(zambi);
++            if (!world.isOnline) {
++               world.spawnEntity(zambi);
++            }
+          }
+ 
+          Player playerEntity = world.getClosestPlayer(MathHelper.floor_double(xCoord), MathHelper.floor_double(yCoord), MathHelper.floor_double(zCoord), 8.0);
+@@ -101,7 +108,9 @@
+          }
+ 
+          DroppedItem drop = new DroppedItem(world, xCoord, yCoord + 1, zCoord, stack);
+-         world.spawnEntity(drop);
++         if (!world.isOnline) {
++            world.spawnEntity(drop);
++         }
+       }
+    }
+ 

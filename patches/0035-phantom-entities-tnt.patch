@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/block/misc/TNT.java
++++ b/net/minecraft/game/block/misc/TNT.java
+@@ -59,7 +59,12 @@
+          return super.blockActivated(world, x, y, z, player);
+       } else {
+          PrimedTNT tnt = new PrimedTNT(world, x + 0.5, y + 0.5, z + 0.5);
+-         world.spawnEntity(tnt);
++         // Server side only. This runs on both sides in multiplayer, so without the guard the
++         // client spawns its own untracked copy: it renders and ticks, but the server never
++         // knows it exists, so it does nothing and cannot be removed.
++         if (!world.isOnline) {
++            world.spawnEntity(tnt);
++         }
+          world.playEntitySound(tnt, "random.fuse", 1.0F, 1.0F);
+          world.setBlockWithNotify(x, y, z, 0);
+          if (lighterMain) {

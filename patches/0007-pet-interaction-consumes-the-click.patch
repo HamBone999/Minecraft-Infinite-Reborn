@@ -1,6 +1,6 @@
 --- a/net/minecraft/game/entity/mob/animal/tameable/TameableMob.java
 +++ b/net/minecraft/game/entity/mob/animal/tameable/TameableMob.java
-@@ -142,6 +142,10 @@
+@@ -147,6 +147,10 @@
        if (player.username.equalsIgnoreCase(this.getOwnerName()) && !this.world.isOnline) {
           this.sitAI.setSitting(!this.isSitting());
           this.jumping = false;

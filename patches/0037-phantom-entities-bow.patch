@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/item/weapons/Bow.java
++++ b/net/minecraft/game/item/weapons/Bow.java
+@@ -93,7 +93,12 @@
+          }
+ 
+          world.playEntitySound(player, "random.bow", 1.0F, 1.0F / (rand.nextFloat() * 0.4F + 0.8F));
+-         world.spawnEntity(arrowx);
++         // Server side only. use() runs on both sides in multiplayer, so without the guard the
++         // client spawns its own untracked arrow: it renders and flies, but hits nothing and
++         // never despawns. The branch above already guards its spawn; this one was missed.
++         if (!world.isOnline) {
++            world.spawnEntity(arrowx);
++         }
+          if (isQuiverEquipped) {
+             player.inventory.accessorySlots[2].damageItem(1, player);
+             stack.damageItem(1, player);

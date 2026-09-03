@@ -1,0 +1,71 @@
+--- a/net/minecraft/game/item/misc/Bucket.java
++++ b/net/minecraft/game/item/misc/Bucket.java
+@@ -63,7 +63,12 @@
+                   cube.setPosition(hitX, hitY + 1, hitZ);
+                   cube.tamed = true;
+                   cube.clearBlock();
+-                  world.spawnEntity(cube);
++                  // Server side only. use() runs on both sides in multiplayer, so without this the
++                  // client spawns its own untracked copy: it renders and ticks, but the server
++                  // never knows it exists, so it does nothing and cannot be removed.
++                  if (!world.isOnline) {
++                     world.spawnEntity(cube);
++                  }
+                   if (player.inventory.getOffHandItem() != null) {
+                      player.swingOffhandItem();
+                   } else {
+@@ -90,7 +95,9 @@
+ 
+                   if (!player.inventory.addItemToInventory(new ItemStack(ItemList.bucketWater, 1))) {
+                      DroppedItem item = new DroppedItem(world, hitX, hitY, hitZ, new ItemStack(ItemList.bucketWater, 1));
+-                     world.spawnEntity(item);
++                     if (!world.isOnline) {
++                        world.spawnEntity(item);
++                     }
+                   }
+ 
+                   return new ItemStack(stack.getItem(), stack.stackSize - 1);
+@@ -110,7 +117,9 @@
+ 
+                   if (!player.inventory.addItemToInventory(new ItemStack(ItemList.bucketLava, 1))) {
+                      DroppedItem item = new DroppedItem(world, hitX, hitY, hitZ, new ItemStack(ItemList.bucketLava, 1));
+-                     world.spawnEntity(item);
++                     if (!world.isOnline) {
++                        world.spawnEntity(item);
++                     }
+                   }
+ 
+                   return new ItemStack(stack.getItem(), stack.stackSize - 1);
+@@ -165,7 +174,9 @@
+                   if (this.id == ItemList.bucketFish.id) {
+                      Fish fish = new Fish(world);
+                      fish.setPosition(hitX + 0.5F, hitY, hitZ + 0.5F);
+-                     world.spawnEntity(fish);
++                     if (!world.isOnline) {
++                        world.spawnEntity(fish);
++                     }
+                   }
+ 
+                   world.playBlockSound(player, hitX, hitY, hitZ, "random.emptyBucket", 1.0F, 1.0F / (rand.nextFloat() * 0.4F + 1.2F));
+@@ -211,7 +222,9 @@
+             if (stack.stackSize > 1) {
+                if (!player.inventory.addItemToInventory(new ItemStack(returnItem, 1))) {
+                   DroppedItem item = new DroppedItem(targetMob.world, targetMob.posX, targetMob.posY, targetMob.posZ, new ItemStack(ItemList.bucketFish, 1));
+-                  player.world.spawnEntity(item);
++                  if (!player.world.isOnline) {
++                     player.world.spawnEntity(item);
++                  }
+                }
+ 
+                stack.stackSize--;
+@@ -244,7 +257,9 @@
+                AquaCube cube = (AquaCube)targetMob;
+                if (cube.block != null) {
+                   DroppedItem drop = new DroppedItem(cube.world, cube.posX, cube.posY, cube.posZ, new ItemStack(cube.block.id, 1, cube.meta));
+-                  cube.world.spawnEntity(drop);
++                  if (!cube.world.isOnline) {
++                     cube.world.spawnEntity(drop);
++                  }
+                }
+ 
+                cube.world.playBlockSound(player, cube.posX, cube.posY, cube.posZ, "mob.slimeattack", 1.0F, 1.0F / (rand.nextFloat() * 0.4F + 1.2F));

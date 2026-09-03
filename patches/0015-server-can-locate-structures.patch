@@ -1,11 +1,9 @@
 --- a/net/minecraft/server/world/ChunkProviderServer.java
 +++ b/net/minecraft/server/world/ChunkProviderServer.java
-@@ -203,7 +203,19 @@
+@@ -211,8 +211,20 @@
        return "ServerChunkCache: " + this.chunkMap.size();
     }
  
--   public BlockPosition findClosestStructure(World world, Class<? extends Structure> target, int i2, int i3, int i4) {
--      return null;
 +   /**
 +    * Locate the nearest generated structure, by asking the generator this provider wraps.
 +    *
@@ -18,6 +16,9 @@
 +    * The generator is already held as serverChunkGenerator and ChunkLoader declares this method,
 +    * so the delegation is all that was missing.
 +    */
+    @Override
+-   public BlockPosition findClosestStructure(World world, Class<? extends Structure> target, int i2, int i3, int i4) {
+-      return null;
 +   public BlockPosition findClosestStructure(World world, Class<? extends Structure> target, int x, int y, int z) {
 +      return this.serverChunkGenerator == null ? null : this.serverChunkGenerator.findClosestStructure(world, target, x, y, z);
     }

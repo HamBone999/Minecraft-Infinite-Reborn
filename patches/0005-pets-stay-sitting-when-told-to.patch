@@ -1,8 +1,8 @@
 --- a/net/minecraft/game/entity/mob/ai/tameable/SitDown.java
 +++ b/net/minecraft/game/entity/mob/ai/tameable/SitDown.java
-@@ -14,12 +14,14 @@
-    }
+@@ -15,12 +15,14 @@
  
+    @Override
     public boolean canExecute() {
 -      if (this.pet.isTamed() && !this.pet.isInWater() && this.pet.onGround) {
 -         Mob owner = this.pet.getOwner();
@@ -20,4 +20,4 @@
 +      return this.pet.isTamed() && !this.pet.isInWater() && this.pet.onGround && this.sitState;
     }
  
-    public void start() {
+    @Override

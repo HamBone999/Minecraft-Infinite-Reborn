@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/item/misc/Bowl.java
++++ b/net/minecraft/game/item/misc/Bowl.java
+@@ -19,7 +19,12 @@
+          if (stack.stackSize > 1) {
+             if (!player.inventory.addItemToInventory(new ItemStack(ItemList.bowlSoup, 1))) {
+                DroppedItem item = new DroppedItem(mob.world, mob.posX, mob.posY, mob.posZ, new ItemStack(ItemList.bowlSoup, 1));
+-               player.world.spawnEntity(item);
++               // Server side only. use() runs on both sides in multiplayer, so without this the
++               // client spawns its own untracked copy: it renders and ticks, but the server
++               // never knows it exists, so it does nothing and cannot be removed.
++               if (!player.world.isOnline) {
++                  player.world.spawnEntity(item);
++               }
+             }
+ 
+             if (player.properties.gamemode != 1) {

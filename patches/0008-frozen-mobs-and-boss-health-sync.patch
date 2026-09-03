@@ -1,7 +1,7 @@
 --- a/net/minecraft/game/entity/mob/Mob.java
 +++ b/net/minecraft/game/entity/mob/Mob.java
-@@ -134,6 +134,71 @@
- 
+@@ -135,6 +135,71 @@
+    @Override
     protected void init() {
        this.dataSync.addObject(8, this.effectID);
 +      // Slot 9 carries "is frozen" to clients. Slots 0-3, 5, 8, 10 and 15-19 are taken
@@ -71,8 +71,8 @@
 +      }
     }
  
-    public String getTexture() {
-@@ -406,6 +471,8 @@
+    @Override
+@@ -417,6 +482,8 @@
        super.onTick();
        this.mobTick();
        this.rotateBody();

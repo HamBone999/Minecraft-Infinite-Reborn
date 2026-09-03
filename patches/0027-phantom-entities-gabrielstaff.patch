@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/item/staff/GabrielStaff.java
++++ b/net/minecraft/game/item/staff/GabrielStaff.java
+@@ -21,7 +21,12 @@
+    public ItemStack use(ItemStack stack, World world, Player player) {
+       if (canUseStaff && stack.isNotBroken()) {
+          Projectile orb = new Orb(world, player, -1);
+-         world.spawnEntity(orb);
++         // Server side only. use() runs on both sides in multiplayer, so without this the
++         // client spawns its own untracked copy: it renders and ticks, but the server
++         // never knows it exists, so it does nothing and cannot be removed.
++         if (!world.isOnline) {
++            world.spawnEntity(orb);
++         }
+          world.playSoundEffect(player, player.posX, player.posY, player.posZ, "random.breath", 1.0F, 1.0F / (world.rand.nextFloat() * 0.4F + 0.8F));
+          if (player.inventory.canUseItem() && player.inventory.getOffHandItem().getItem() == stack.getItem()) {
+             player.swingOffhandItem();

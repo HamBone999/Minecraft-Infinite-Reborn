@@ -1,0 +1,35 @@
+--- a/net/minecraft/client/gui/screens/multiplayer/ServerSelectScreen.java
++++ b/net/minecraft/client/gui/screens/multiplayer/ServerSelectScreen.java
+@@ -460,10 +460,29 @@
+ 
+          this.drawGraphic(slotX + 205, slotY, 0 + imgOffset * 10, 31 + heightOffset * 8, 10, 8);
+ 
++         // The icon arrives one packet AFTER the name, and this method runs every frame, so
++         // there is a window where the name is known but the file is not on disk yet.
++         // getTexture caches by path -- including a miss -- so asking for the icon during that
++         // window pins the fallback under the real path for the rest of the session, and the
++         // icon never appears no matter how long you look at it. Only ask once the file is
++         // actually there; the frame after it lands picks it up.
++         //
++         // Deliberately a plain isFile() rather than invalidating the cache from
++         // PingHandler.handleServerIcon: that runs on the ping thread, and touching GL or the
++         // texture map from off the render thread is a far worse bug than the one being fixed.
++         String iconName = serverStorage.serversideName == null
++            ? ""
++            : serverStorage.serversideName.replaceAll("[^a-zA-Z0-9._-]", "_");
++         File iconFile = iconName.isEmpty()
++            ? null
++            : new File(Minecraft.getMinecraftDir(), "servers/" + iconName + ".png");
++
+          try {
+-            this.mc
+-               .textureLoader
+-               .bindTexture(this.mc.textureLoader.getTexture("&&servers/" + serverStorage.serversideName.replaceAll("[^a-zA-Z0-9._-]", "_") + ".png"));
++            if (iconFile != null && iconFile.isFile()) {
++               this.mc.textureLoader.bindTexture(this.mc.textureLoader.getTexture("&&servers/" + iconName + ".png"));
++            } else {
++               this.mc.textureLoader.bindTexture(this.mc.textureLoader.getTexture("/gui/unknown_pack.png"));
++            }
+          } catch (Exception var18) {
+             this.mc.textureLoader.bindTexture(this.mc.textureLoader.getTexture("/gui/unknown_pack.png"));
+          }

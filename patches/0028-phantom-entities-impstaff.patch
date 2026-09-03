@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/item/staff/ImpStaff.java
++++ b/net/minecraft/game/item/staff/ImpStaff.java
+@@ -38,7 +38,12 @@
+          Imp imp = new Imp(world, true);
+          imp.setPosAndRot(player.posX + 1.0, player.posY, player.posZ, player.pitch, player.yaw);
+          imp.tamed = true;
+-         world.spawnEntity(imp);
++         // Server side only. use() runs on both sides in multiplayer, so without this the
++         // client spawns its own untracked copy: it renders and ticks, but the server
++         // never knows it exists, so it does nothing and cannot be removed.
++         if (!world.isOnline) {
++            world.spawnEntity(imp);
++         }
+          world.playSoundEffect(player, player.posX, player.posY, player.posZ, "random.breath", 1.0F, 1.0F / (world.rand.nextFloat() * 0.4F + 0.8F));
+ 
+          for (int i = 0; i < 20; i++) {

@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/item/tools/Pickaxe.java
++++ b/net/minecraft/game/item/tools/Pickaxe.java
+@@ -73,7 +73,12 @@
+          && BlockList.blocks[id].getHardness() > 0.0F
+          && BlockList.blocks[id].fullBlock()
+          && !(BlockList.blocks[id] instanceof ContainerBlock)) {
+-         world.spawnEntity(new FallingBlock(world, x + 0.5, y + 0.5, z + 0.5, id, meta, player));
++         // Server side only. use() runs on both sides in multiplayer, so without this the
++         // client spawns its own untracked copy: it renders and ticks, but the server
++         // never knows it exists, so it does nothing and cannot be removed.
++         if (!world.isOnline) {
++            world.spawnEntity(new FallingBlock(world, x + 0.5, y + 0.5, z + 0.5, id, meta, player));
++         }
+          StepSound snd = block.getStepSound(meta);
+          world.playSoundEffect(player, offsetX, offsetY, offsetZ, snd.getSound(), (snd.volume + 1.0F) / 2.0F, snd.pitch * 0.8F);
+          world.setBlockWithNotify(x, y, z, 0);

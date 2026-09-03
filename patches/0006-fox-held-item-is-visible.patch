@@ -39,4 +39,4 @@
 +      }
     }
  
-    public void setType() {
+    @Override

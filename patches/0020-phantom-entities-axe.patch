@@ -1,0 +1,27 @@
+--- a/net/minecraft/game/item/tools/Axe.java
++++ b/net/minecraft/game/item/tools/Axe.java
+@@ -39,7 +39,12 @@
+             double offsetZ = world.rand.nextFloat() * offset + (1.0F - offset) * 0.5;
+             DroppedItem item = new DroppedItem(world, x + offsetX, y + offsetY, z + offsetZ, new ItemStack(ItemList.bark.id, 1, 0));
+             item.pickupDelay = 10;
+-            world.spawnEntity(item);
++            // Server side only. use() runs on both sides in multiplayer, so without this the
++            // client spawns its own untracked copy: it renders and ticks, but the server
++            // never knows it exists, so it does nothing and cannot be removed.
++            if (!world.isOnline) {
++               world.spawnEntity(item);
++            }
+          }
+ 
+          itemStack.damageItem(1, player);
+@@ -83,7 +88,9 @@
+          double offsetZ = world.rand.nextFloat() * offset + (1.0F - offset) * 0.5;
+          DroppedItem item = new DroppedItem(world, x + offsetX, y + offsetY, z + offsetZ, new ItemStack(ItemList.seedsPumpkin.id, 2, 0));
+          item.pickupDelay = 10;
+-         world.spawnEntity(item);
++         if (!world.isOnline) {
++            world.spawnEntity(item);
++         }
+          player.addStat(StatList.useStats[this.id], 1);
+          itemStack.damageItem(1, player);
+          return true;

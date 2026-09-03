@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/item/staff/CloudStaff.java
++++ b/net/minecraft/game/item/staff/CloudStaff.java
+@@ -16,7 +16,12 @@
+    public ItemStack use(ItemStack stack, World world, Player player) {
+       if (player.itemUseCooldown == 0 && stack.isNotBroken()) {
+          Projectile windball = new Windball(world, player, 4);
+-         world.spawnEntity(windball);
++         // Server side only. use() runs on both sides in multiplayer, so without this the
++         // client spawns its own untracked copy: it renders and ticks, but the server
++         // never knows it exists, so it does nothing and cannot be removed.
++         if (!world.isOnline) {
++            world.spawnEntity(windball);
++         }
+          world.playSoundEffect(player, player.posX, player.posY, player.posZ, "mob.ghast.shoot", 1.0F, 1.0F / (world.rand.nextFloat() * 0.4F + 0.8F));
+          if (player.inventory.canUseItem() && player.inventory.getOffHandItem().getItem() == stack.getItem()) {
+             player.swingOffhandItem();

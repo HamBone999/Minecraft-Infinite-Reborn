@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/item/tools/Brush.java
++++ b/net/minecraft/game/item/tools/Brush.java
+@@ -90,7 +90,12 @@
+          }
+ 
+          DroppedItem item = new DroppedItem(world, this.xCoord, this.yCoord + 1.5, this.zCoord, drop);
+-         world.spawnEntity(item);
++         // Server side only. use() runs on both sides in multiplayer, so without this the
++         // client spawns its own untracked copy: it renders and ticks, but the server
++         // never knows it exists, so it does nothing and cannot be removed.
++         if (!world.isOnline) {
++            world.spawnEntity(item);
++         }
+          player.addStat(StatList.useStats[this.id], 1);
+          player.triggerAchievement(AchievementList.archeology);
+       }

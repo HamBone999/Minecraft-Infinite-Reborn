@@ -1,0 +1,16 @@
+--- a/net/minecraft/game/block/utility/ContainerBlock.java
++++ b/net/minecraft/game/block/utility/ContainerBlock.java
+@@ -50,7 +50,12 @@
+                drop.motionX = (float)world.rand.nextGaussian() * 0.05F;
+                drop.motionY = (float)world.rand.nextGaussian() * 0.05F + 0.2F;
+                drop.motionZ = (float)world.rand.nextGaussian() * 0.05F;
+-               world.spawnEntity(drop);
++               // Server side only. This runs on both sides in multiplayer, so without the guard the
++               // client spawns its own untracked copy: it renders and ticks, but the server never
++               // knows it exists, so it does nothing and cannot be removed.
++               if (!world.isOnline) {
++                  world.spawnEntity(drop);
++               }
+             }
+          }
+       }
