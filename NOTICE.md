@@ -3,8 +3,8 @@
 The Minecraft Infinite server bundles the components below. Their licences require these
 notices.
 
-Shorter list than the client's. The server has no sound stack and no LWJGL, so JOrbis,
-PaulsCode and LWJGL don't appear here.
+Shorter list than the client's. The server has no sound stack and no LWJGL, JOrbis,
+PaulsCode.
 
 ## fastutil
 
