@@ -1,7 +1,6 @@
 # Minecraft Infinite
 
-Source for the Infinite client patches, the server patches, the mod loader changes and the
-three server addons.
+Source for the Infinite client patches, the server patches, the mod loader changes and the server addons.
 
 To install download the client zip from [Releases](https://github.com/HamBone999/Minecraft-Infinite-Reborn/releases).
 Follow install instructions included.
